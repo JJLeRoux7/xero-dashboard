@@ -548,53 +548,44 @@ async function getBalanceSheet(accessToken, tenantId) {
 }
 
 async function getBankStatementBalances(accessToken, tenantId) {
-  // Step 1: get all bank accounts
-  const acctRes = await fetch('https://xero-proxy.jj-026.workers.dev/xero/Accounts?where=Type%3D%3D%22BANK%22', {
+  // Use BankSummary report — we know this works and returns real data
+  const res = await fetch('https://xero-proxy.jj-026.workers.dev/xero/Reports/BankSummary', {
     headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
   });
-  if (!acctRes.ok) throw new Error('Failed to fetch accounts');
-  const acctData = await acctRes.json();
-  const accounts = acctData.Accounts || [];
+  if (!res.ok) throw new Error('BankSummary failed: ' + res.status);
+  const data = await res.json();
+
+  // Log the FULL raw response so we can see every cell value
+  console.log('FULL BANKSUMMARY RESPONSE:', JSON.stringify(data));
 
   const results = [];
-  for (const acct of accounts) {
-    try {
-      // Step 2: get Bank Reconciliation Summary report for each account
-      // This returns "Statement balance (calculated)" which matches Xero's Business Overview
-      const rptRes = await fetch(`https://xero-proxy.jj-026.workers.dev/xero/Reports/BankReconciliationSummary?accountID=${acct.AccountID}`, {
-        headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
-      });
+  const report = data.Reports?.[0];
+  if (!report) return results;
 
-      if (!rptRes.ok) {
-        results.push({ name: acct.Name, currency: acct.CurrencyCode || 'GBP', balance: 0 });
-        continue;
-      }
-
-      const rptData = await rptRes.json();
-      const report = rptData.Reports?.[0];
-      let statementBalance = 0;
-
-      // Walk all rows to find "Statement balance (calculated)"
-      function findBalance(rows) {
-        for (const row of rows || []) {
-          const cells = row.Cells || [];
-          const label = cells[0]?.Value || '';
-          if (label.toLowerCase().includes('statement balance (calculated)')) {
-            const raw = String(cells[1]?.Value || cells[2]?.Value || '0');
+  for (const section of report.Rows || []) {
+    const rows = section.RowType === 'Section' ? (section.Rows || []) : [section];
+    for (const row of rows) {
+      if (row.RowType === 'Row') {
+        const cells = row.Cells || [];
+        console.log('ROW CELLS:', cells.map(c => c.Value));
+        const name = cells[0]?.Value;
+        if (!name) continue;
+        // Log all cell values so we can identify which index has statement balance
+        const allVals = cells.map((c,i) => i + ':' + c.Value);
+        console.log('ACCOUNT:', name, 'VALUES:', allVals);
+        // For now grab last non-empty cell as the closing balance
+        let balance = 0;
+        for (let i = cells.length - 1; i >= 1; i--) {
+          const raw = String(cells[i]?.Value || '');
+          if (raw && raw !== '') {
             const negative = raw.includes('(');
             const cleaned = raw.replace(/[^0-9.]/g, '');
-            statementBalance = negative ? -parseFloat(cleaned) : parseFloat(cleaned);
-            return true;
+            balance = negative ? -parseFloat(cleaned) : parseFloat(cleaned);
+            break;
           }
-          if (row.Rows && findBalance(row.Rows)) return true;
         }
-        return false;
+        results.push({ name, currency: 'GBP', balance });
       }
-      findBalance(report?.Rows);
-
-      results.push({ name: acct.Name, currency: acct.CurrencyCode || 'GBP', balance: statementBalance });
-    } catch(e) {
-      results.push({ name: acct.Name, currency: acct.CurrencyCode || 'GBP', balance: 0 });
     }
   }
   return results;
