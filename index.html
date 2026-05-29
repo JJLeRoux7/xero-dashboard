@@ -549,7 +549,7 @@ async function getBalanceSheet(accessToken, tenantId) {
 
 async function getBankStatementBalances(accessToken, tenantId) {
   const today = new Date().toISOString().split('T')[0];
-  const res = await fetch(`https://xero-proxy.jj-026.workers.dev/xero/Reports/BankSummary?fromDate=2000-01-01&toDate=${today}`, {
+  const res = await fetch(`https://xero-proxy.jj-026.workers.dev/xero/Reports/BankSummary`, {
     headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
   });
   if (!res.ok) throw new Error('Failed to fetch bank summary: ' + res.status);
@@ -557,15 +557,23 @@ async function getBankStatementBalances(accessToken, tenantId) {
   const results = [];
   const report = data.Reports?.[0];
   if (!report) return results;
+
+  // Debug: log full report structure to console
+  console.log('BankSummary report rows:', JSON.stringify(report.Rows, null, 2));
+
   for (const section of report.Rows || []) {
-    if (section.RowType === 'Section') {
-      for (const row of section.Rows || []) {
-        if (row.RowType === 'Row') {
-          const cells = row.Cells || [];
-          const name = cells[0]?.Value || '';
-          const closingStr = cells[4]?.Value || cells[3]?.Value || '0';
-          const balance = parseFloat(String(closingStr).replace(/[^0-9.\-]/g, '')) || 0;
-          if (name) results.push({ name, currency: 'GBP', balance });
+    // Handle both Section rows and direct Rows
+    const rowsToProcess = section.RowType === 'Section' ? (section.Rows || []) : [section];
+    for (const row of rowsToProcess) {
+      if (row.RowType === 'Row' || row.RowType === 'SummaryRow') {
+        const cells = row.Cells || [];
+        const name = cells[0]?.Value || '';
+        // Try all possible closing balance column positions
+        const closingStr = cells[4]?.Value || cells[3]?.Value || cells[2]?.Value || '0';
+        const cleaned = String(closingStr).replace(/[,£$€\s]/g, '').replace(/[()]/g, (m) => m === '(' ? '-' : '');
+        const balance = parseFloat(cleaned) || 0;
+        if (name && name !== '' && row.RowType !== 'SummaryRow') {
+          results.push({ name, currency: 'GBP', balance });
         }
       }
     }
