@@ -463,7 +463,7 @@ async function exchangeCode(code) {
   const creds = getCredentials();
   if (!creds) throw new Error('Credentials not found. Please reconnect.');
   const basicAuth = btoa(creds.clientId + ':' + creds.clientSecret);
-  const res = await fetch('https://identity.xero.com/connect/token', {
+  const res = await fetch('https://xero-proxy.jj-026.workers.dev/token', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -486,7 +486,7 @@ async function refreshToken(refreshTok) {
   const creds = getCredentials();
   if (!creds) throw new Error('No credentials stored.');
   const basicAuth = btoa(creds.clientId + ':' + creds.clientSecret);
-  const res = await fetch('https://identity.xero.com/connect/token', {
+  const res = await fetch('https://xero-proxy.jj-026.workers.dev/token', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -522,7 +522,7 @@ async function getValidAccessToken() {
 }
 
 async function getTenants(accessToken) {
-  const res = await fetch('https://api.xero.com/connections', {
+  const res = await fetch('https://xero-proxy.jj-026.workers.dev/connections', {
     headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' }
   });
   if (!res.ok) throw new Error('Failed to fetch tenants');
@@ -530,7 +530,7 @@ async function getTenants(accessToken) {
 }
 
 async function getBankAccounts(accessToken, tenantId) {
-  const res = await fetch('https://api.xero.com/api.xro/2.0/Accounts?where=Type%3D%3D%22BANK%22&Status%3D%3D%22ACTIVE%22', {
+  const res = await fetch('https://xero-proxy.jj-026.workers.dev/xero/Accounts?where=Type%3D%3D%22BANK%22&Status%3D%3D%22ACTIVE%22', {
     headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
   });
   if (!res.ok) throw new Error('Failed to fetch accounts for tenant ' + tenantId);
@@ -540,7 +540,7 @@ async function getBankAccounts(accessToken, tenantId) {
 
 async function getBalanceSheet(accessToken, tenantId) {
   const today = new Date().toISOString().split('T')[0];
-  const res = await fetch(`https://api.xero.com/api.xro/2.0/Reports/BalanceSheet?date=${today}&payments=true`, {
+  const res = await fetch(`https://xero-proxy.jj-026.workers.dev/xero/Reports/BalanceSheet?date=${today}&payments=true`, {
     headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
   });
   if (!res.ok) throw new Error('Failed to fetch balance sheet');
@@ -552,22 +552,22 @@ async function getBankStatementBalances(accessToken, tenantId) {
   const results = [];
   for (const acct of accounts) {
     try {
-      const res = await fetch(`https://api.xero.com/api.xro/2.0/BankTransactions?BankAccount.AccountID=${acct.AccountID}&page=1`, {
+      const res = await fetch(`https://xero-proxy.jj-026.workers.dev/xero/BankTransactions?BankAccount.AccountID=${acct.AccountID}&page=1`, {
         headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
       });
       if (!res.ok) continue;
 
-      const stmtRes = await fetch(`https://api.xero.com/api.xro/2.0/BankStatements?BankAccountID=${acct.AccountID}`, {
+      const stmtRes = await fetch(`https://xero-proxy.jj-026.workers.dev/xero/BankStatements?BankAccountID=${acct.AccountID}`, {
         headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
       });
 
-      const reportRes = await fetch(`https://api.xero.com/api.xro/2.0/Reports/BankStatement?bankAccountID=${acct.AccountID}&fromDate=2000-01-01&toDate=${new Date().toISOString().split('T')[0]}`, {
+      const reportRes = await fetch(`https://xero-proxy.jj-026.workers.dev/xero/Reports/BankStatement?bankAccountID=${acct.AccountID}&fromDate=2000-01-01&toDate=${new Date().toISOString().split('T')[0]}`, {
         headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
       });
 
       let balance = acct.BankAccountNumber ? null : null;
 
-      const acctDetailRes = await fetch(`https://api.xero.com/api.xro/2.0/Accounts/${acct.AccountID}`, {
+      const acctDetailRes = await fetch(`https://xero-proxy.jj-026.workers.dev/xero/Accounts/${acct.AccountID}`, {
         headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
       });
       if (acctDetailRes.ok) {
