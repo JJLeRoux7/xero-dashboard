@@ -548,43 +548,26 @@ async function getBalanceSheet(accessToken, tenantId) {
 }
 
 async function getBankStatementBalances(accessToken, tenantId) {
-  const accounts = await getBankAccounts(accessToken, tenantId);
+  const today = new Date().toISOString().split('T')[0];
+  const res = await fetch(`https://xero-proxy.jj-026.workers.dev/xero/Reports/BankSummary?fromDate=2000-01-01&toDate=${today}`, {
+    headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
+  });
+  if (!res.ok) throw new Error('Failed to fetch bank summary: ' + res.status);
+  const data = await res.json();
   const results = [];
-  for (const acct of accounts) {
-    try {
-      const res = await fetch(`https://xero-proxy.jj-026.workers.dev/xero/BankTransactions?BankAccount.AccountID=${acct.AccountID}&page=1`, {
-        headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
-      });
-      if (!res.ok) continue;
-
-      const stmtRes = await fetch(`https://xero-proxy.jj-026.workers.dev/xero/BankStatements?BankAccountID=${acct.AccountID}`, {
-        headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
-      });
-
-      const reportRes = await fetch(`https://xero-proxy.jj-026.workers.dev/xero/Reports/BankStatement?bankAccountID=${acct.AccountID}&fromDate=2000-01-01&toDate=${new Date().toISOString().split('T')[0]}`, {
-        headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
-      });
-
-      let balance = acct.BankAccountNumber ? null : null;
-
-      const acctDetailRes = await fetch(`https://xero-proxy.jj-026.workers.dev/xero/Accounts/${acct.AccountID}`, {
-        headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
-      });
-      if (acctDetailRes.ok) {
-        const detail = await acctDetailRes.json();
-        const a = detail.Accounts?.[0];
-        balance = a ? (a.SystemAccount === 'BANK' ? a.Balance : a.Balance) : 0;
+  const report = data.Reports?.[0];
+  if (!report) return results;
+  for (const section of report.Rows || []) {
+    if (section.RowType === 'Section') {
+      for (const row of section.Rows || []) {
+        if (row.RowType === 'Row') {
+          const cells = row.Cells || [];
+          const name = cells[0]?.Value || '';
+          const closingStr = cells[4]?.Value || cells[3]?.Value || '0';
+          const balance = parseFloat(String(closingStr).replace(/[^0-9.\-]/g, '')) || 0;
+          if (name) results.push({ name, currency: 'GBP', balance });
+        }
       }
-
-      results.push({
-        id: acct.AccountID,
-        name: acct.Name,
-        code: acct.Code,
-        currency: acct.CurrencyCode || 'GBP',
-        balance: balance ?? 0
-      });
-    } catch (e) {
-      results.push({ id: acct.AccountID, name: acct.Name, code: acct.Code, currency: 'GBP', balance: 0, error: true });
     }
   }
   return results;
