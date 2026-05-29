@@ -453,7 +453,7 @@ function startAuth() {
     response_type: 'code',
     client_id: clientId,
     redirect_uri: REDIRECT_URI,
-    scope: 'openid profile email accounting.reports.read offline_access',
+    scope: 'openid profile email accounting.transactions:read accounting.settings:read offline_access',
     state
   });
   window.location.href = 'https://login.xero.com/identity/connect/authorize?' + params;
