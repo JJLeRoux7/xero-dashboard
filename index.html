@@ -570,20 +570,13 @@ async function getBankStatementBalances(accessToken, tenantId) {
         console.log('ROW CELLS:', cells.map(c => c.Value));
         const name = cells[0]?.Value;
         if (!name) continue;
-        // Log all cell values so we can identify which index has statement balance
-        const allVals = cells.map((c,i) => i + ':' + c.Value);
-        console.log('ACCOUNT:', name, 'VALUES:', allVals);
-        // For now grab last non-empty cell as the closing balance
+        // Column 4 = Statement balance (calculated) in BankSummary report
+        // Column 1 = Balance in Xero (wrong), Column 4 = Statement balance (right)
         let balance = 0;
-        for (let i = cells.length - 1; i >= 1; i--) {
-          const raw = String(cells[i]?.Value || '');
-          if (raw && raw !== '') {
-            const negative = raw.includes('(');
-            const cleaned = raw.replace(/[^0-9.]/g, '');
-            balance = negative ? -parseFloat(cleaned) : parseFloat(cleaned);
-            break;
-          }
-        }
+        const raw = String(cells[4]?.Value || cells[3]?.Value || '0');
+        const negative = raw.includes('(');
+        const cleaned = raw.replace(/[^0-9.]/g, '');
+        balance = negative ? -parseFloat(cleaned) : (parseFloat(cleaned) || 0);
         results.push({ name, currency: 'GBP', balance });
       }
     }
