@@ -548,34 +548,36 @@ async function getBalanceSheet(accessToken, tenantId) {
 }
 
 async function getBankStatementBalances(accessToken, tenantId) {
-  const today = new Date().toISOString().split('T')[0];
-  const res = await fetch(`https://xero-proxy.jj-026.workers.dev/xero/Reports/BankSummary`, {
+  // Step 1: get all bank accounts
+  const acctRes = await fetch('https://xero-proxy.jj-026.workers.dev/xero/Accounts?where=Type%3D%3D%22BANK%22', {
     headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
   });
-  if (!res.ok) throw new Error('Failed to fetch bank summary: ' + res.status);
-  const data = await res.json();
+  if (!acctRes.ok) throw new Error('Failed to fetch accounts');
+  const acctData = await acctRes.json();
+  const accounts = acctData.Accounts || [];
+
   const results = [];
-  const report = data.Reports?.[0];
-  if (!report) return results;
-
-  // Debug: log full report structure to console
-  console.log('BankSummary report rows:', JSON.stringify(report.Rows, null, 2));
-
-  for (const section of report.Rows || []) {
-    // Handle both Section rows and direct Rows
-    const rowsToProcess = section.RowType === 'Section' ? (section.Rows || []) : [section];
-    for (const row of rowsToProcess) {
-      if (row.RowType === 'Row' || row.RowType === 'SummaryRow') {
-        const cells = row.Cells || [];
-        const name = cells[0]?.Value || '';
-        // Try all possible closing balance column positions
-        const closingStr = cells[4]?.Value || cells[3]?.Value || cells[2]?.Value || '0';
-        const cleaned = String(closingStr).replace(/[,£$€\s]/g, '').replace(/[()]/g, (m) => m === '(' ? '-' : '');
-        const balance = parseFloat(cleaned) || 0;
-        if (name && name !== '' && row.RowType !== 'SummaryRow') {
-          results.push({ name, currency: 'GBP', balance });
-        }
+  for (const acct of accounts) {
+    try {
+      // Step 2: get bank statements for each account — last statement line = statement balance
+      const stmtRes = await fetch(`https://xero-proxy.jj-026.workers.dev/xero/BankStatements?BankAccountID=${acct.AccountID}`, {
+        headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
+      });
+      if (!stmtRes.ok) {
+        results.push({ name: acct.Name, currency: acct.CurrencyCode || 'GBP', balance: 0 });
+        continue;
       }
+      const stmtData = await stmtRes.json();
+      const lines = stmtData.BankStatements?.[0]?.Lines || stmtData.Items || [];
+      // The closing balance of the last line is the statement balance
+      let statementBalance = 0;
+      if (lines.length > 0) {
+        const last = lines[lines.length - 1];
+        statementBalance = last.ClosingBalance ?? last.Balance ?? last.RunningBalance ?? 0;
+      }
+      results.push({ name: acct.Name, currency: acct.CurrencyCode || 'GBP', balance: statementBalance });
+    } catch(e) {
+      results.push({ name: acct.Name, currency: acct.CurrencyCode || 'GBP', balance: 0 });
     }
   }
   return results;
