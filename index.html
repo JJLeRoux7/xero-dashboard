@@ -548,15 +548,6 @@ async function getBalanceSheet(accessToken, tenantId) {
 }
 
 async function getBankStatementBalances(accessToken, tenantId) {
-  // BankSummary: one call, returns Balance in Xero per account
-  const res = await fetch('https://xero-proxy.jj-026.workers.dev/xero/Reports/BankSummary', {
-    headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
-  });
-  if (!res.ok) throw new Error('BankSummary failed: ' + res.status);
-  const data = await res.json();
-  const report = data.Reports?.[0];
-  if (!report) return [];
-
   function parseAmt(val) {
     if (!val && val !== 0) return 0;
     const s = String(val);
@@ -565,7 +556,29 @@ async function getBankStatementBalances(accessToken, tenantId) {
     return neg ? -n : n;
   }
 
-  // Extract accounts and their IDs from BankSummary
+  // Fetch BankSummary and Accounts list in parallel
+  const [summaryRes, acctRes] = await Promise.all([
+    fetch('https://xero-proxy.jj-026.workers.dev/xero/Reports/BankSummary', {
+      headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
+    }),
+    fetch('https://xero-proxy.jj-026.workers.dev/xero/Accounts?where=Type%3D%3D%22BANK%22', {
+      headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
+    })
+  ]);
+
+  if (!summaryRes.ok) throw new Error('BankSummary failed: ' + summaryRes.status);
+  const summaryData = await summaryRes.json();
+  const report = summaryData.Reports?.[0];
+  if (!report) return [];
+
+  // Build name->accountID map from Accounts endpoint
+  const accountsData = acctRes.ok ? await acctRes.json() : { Accounts: [] };
+  const accountMap = {};
+  for (const a of accountsData.Accounts || []) {
+    accountMap[a.Name] = a.AccountID;
+  }
+
+  // Parse BankSummary rows
   const accountRows = [];
   for (const section of report.Rows || []) {
     const rows = section.RowType === 'Section' ? (section.Rows || []) : [section];
@@ -575,14 +588,13 @@ async function getBankStatementBalances(accessToken, tenantId) {
         const name = cells[0]?.Value;
         if (!name) continue;
         const xeroBalance = parseAmt(cells[4]?.Value) || parseAmt(cells[1]?.Value);
-        // Get accountID from cell attributes
-        const accountID = cells[0]?.Attributes?.find(a => a.Id === 'accountID')?.Value || '';
+        const accountID = accountMap[name] || '';
         accountRows.push({ name, currency: 'GBP', balance: xeroBalance, xeroBalance, accountID, unreconciledCount: null, unreconciledAmount: null });
       }
     }
   }
 
-  // Fetch unreconciled transactions per account IN PARALLEL
+  // Fetch unreconciled tx count+amount per account IN PARALLEL
   const promises = accountRows.map(async (acct) => {
     if (!acct.accountID) return acct;
     try {
@@ -593,10 +605,9 @@ async function getBankStatementBalances(accessToken, tenantId) {
       if (!res.ok) return acct;
       const data = await res.json();
       const txs = data.BankTransactions || [];
-      // Sum unreconciled amounts
       let unreconciledAmount = 0;
       for (const tx of txs) {
-        const amt = tx.Total || tx.SubTotal || 0;
+        const amt = tx.Total || 0;
         if (tx.Type === 'RECEIVE') unreconciledAmount += amt;
         else unreconciledAmount -= amt;
       }
@@ -643,13 +654,21 @@ function renderOrgCard(orgName, accounts, loading) {
   } else {
     for (const a of accounts) {
       const negAmt = a.balance < 0 ? ' negative' : '';
-      const diffHtml = (a.unreconciledAmount !== null && a.unreconciledAmount !== 0)
-        ? `<div style="font-size:11px;color:#888780;margin-top:3px;">Diff: ${fmt(a.unreconciledAmount, a.currency)} (${a.unreconciledCount} unreconciled)</div>`
-        : (a.unreconciledCount === 0 ? `<div style="font-size:11px;color:#63a522;margin-top:3px;">✓ Fully reconciled</div>` : '');
+      const statementBalance = (a.unreconciledAmount !== null) ? a.balance + a.unreconciledAmount : null;
+      const stmtNeg = statementBalance !== null && statementBalance < 0 ? 'color:#a32d2d;' : '';
+      const diffHtml = (a.unreconciledCount === null)
+        ? '' // still loading or no accountID
+        : (a.unreconciledCount === 0)
+          ? `<div style="font-size:11px;color:#63a522;margin-top:4px;">✓ Fully reconciled</div>`
+          : `<div style="border-top:0.5px solid #f0efe9;margin-top:6px;padding-top:6px;">
+               <div style="font-size:11px;color:#888780;">Unreconciled (${a.unreconciledCount} items): ${fmt(a.unreconciledAmount, a.currency)}</div>
+               <div style="font-weight:600;margin-top:3px;${stmtNeg}">${fmt(statementBalance, a.currency)}</div>
+               <div style="font-size:11px;color:#888780;">Est. Statement Balance</div>
+             </div>`;
       accountsHtml += `
-        <div class="account-row">
-          <span class="account-name">${a.name}</span>
-          <div style="text-align:right">
+        <div class="account-row" style="align-items:flex-start;padding-top:10px;padding-bottom:10px;">
+          <span class="account-name" style="padding-top:2px;">${a.name}</span>
+          <div style="text-align:right;min-width:120px;">
             <div class="account-balance${negAmt}">${fmt(a.balance, a.currency)}</div>
             <div style="font-size:11px;color:#888780;margin-top:2px;">Balance in Xero</div>
             ${diffHtml}
