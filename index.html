@@ -234,7 +234,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 1.25rem;
+    padding: 10px 1.25rem;
     font-size: 13px;
     border-bottom: 0.5px solid #f0efe9;
   }
@@ -548,39 +548,52 @@ async function getBalanceSheet(accessToken, tenantId) {
 }
 
 async function getBankStatementBalances(accessToken, tenantId) {
-  // Get all bank accounts
-  const acctRes = await fetch('https://xero-proxy.jj-026.workers.dev/xero/Accounts?where=Type%3D%3D%22BANK%22', {
+  // BankSummary: one call per entity, fast
+  const res = await fetch('https://xero-proxy.jj-026.workers.dev/xero/Reports/BankSummary', {
     headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
   });
-  if (!acctRes.ok) throw new Error('Failed to fetch accounts');
-  const accounts = (await acctRes.json()).Accounts || [];
+  if (!res.ok) throw new Error('BankSummary failed: ' + res.status);
+  const data = await res.json();
+  const results = [];
+  const report = data.Reports?.[0];
+  if (!report) return results;
 
-  // Fetch statement lines in parallel for each account
-  // StatementLines are the raw bank feed entries and have a running Balance field
-  const promises = accounts.map(async (acct) => {
-    try {
-      // Request STATEMENT type transactions (raw bank feed lines) sorted newest first
-      const url = `https://xero-proxy.jj-026.workers.dev/xero/BankTransactions?BankAccount.AccountID=${acct.AccountID}&Type=RECEIVE%2CSPEND&order=Date%20DESC&page=1`;
-      const res = await fetch(url, {
-        headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
-      });
-      if (!res.ok) return { name: acct.Name, currency: acct.CurrencyCode || 'GBP', balance: 0 };
-      const data = await res.json();
-      const txs = data.BankTransactions || [];
+  function parseAmt(val) {
+    if (!val && val !== 0) return 0;
+    const s = String(val);
+    const neg = s.includes('(');
+    const n = parseFloat(s.replace(/[^0-9.]/g, '')) || 0;
+    return neg ? -n : n;
+  }
 
-      // Log all fields on first tx to find the balance field
-      if (txs.length > 0) {
-        console.log('=== ' + acct.Name + ' ===');
-        console.log(JSON.stringify(txs[0], null, 2));
+  for (const section of report.Rows || []) {
+    const rows = section.RowType === 'Section' ? (section.Rows || []) : [section];
+    for (const row of rows) {
+      if (row.RowType === 'Row') {
+        const cells = row.Cells || [];
+        const name = cells[0]?.Value;
+        if (!name) continue;
+        // col1 = closing balance (Balance in Xero)
+        // col4 = closing balance from bank feed perspective
+        const xeroBalance = parseAmt(cells[1]?.Value);
+        const opening = parseAmt(cells[1]?.Value);
+        const received = parseAmt(cells[2]?.Value);
+        const spent = parseAmt(cells[3]?.Value);
+        const closingXero = parseAmt(cells[4]?.Value) || (opening + received + spent);
+        // accountID for linking
+        const accountID = cells[0]?.Attributes?.find(a => a.Id === 'accountID')?.Value || 
+                          cells[1]?.Attributes?.find(a => a.Id === 'account')?.Value || '';
+        results.push({ 
+          name, 
+          currency: 'GBP', 
+          balance: closingXero,        // Balance in Xero (reconciled)
+          xeroBalance: closingXero,
+          accountID
+        });
       }
-
-      return { name: acct.Name, currency: acct.CurrencyCode || 'GBP', balance: 0 };
-    } catch(e) {
-      return { name: acct.Name, currency: acct.CurrencyCode || 'GBP', balance: 0 };
     }
-  });
-
-  return Promise.all(promises);
+  }
+  return results;
 }
 
 const ORG_NAMES = [
@@ -620,7 +633,10 @@ function renderOrgCard(orgName, accounts, loading) {
       accountsHtml += `
         <div class="account-row">
           <span class="account-name">${a.name}</span>
-          <span class="account-balance${negAmt}">${fmt(a.balance, a.currency)}</span>
+          <div style="text-align:right">
+            <div class="account-balance${negAmt}">${fmt(a.balance, a.currency)}</div>
+            <div style="font-size:11px;color:#888780;margin-top:2px;">Balance in Xero</div>
+          </div>
         </div>`;
     }
   }
@@ -630,6 +646,7 @@ function renderOrgCard(orgName, accounts, loading) {
       <div class="org-header">
         <div class="org-name" title="${orgName}">${orgName}</div>
         <div class="org-total${negClass}">${loading ? '—' : fmt(total, accounts[0]?.currency || 'GBP')}</div>
+        ${loading ? '' : '<div style="font-size:11px;color:#888780;margin-top:2px;">Balance in Xero · Statement balance not available via API</div>'}
       </div>
       <div class="accounts-list">${accountsHtml}</div>
     </div>`;
