@@ -6,341 +6,68 @@
 <title>Xero Bank Balances</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f4f0; min-height: 100vh; color: #1a1a18; }
+  header { background: #1a1a18; color: #f5f4f0; padding: 1.5rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 18px; font-weight: 500; letter-spacing: -0.02em; }
+  #last-updated { font-size: 12px; color: #888780; }
+  .container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
 
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #f5f4f0;
-    min-height: 100vh;
-    color: #1a1a18;
-  }
-
-  header {
-    background: #1a1a18;
-    color: #f5f4f0;
-    padding: 1.5rem 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  header h1 {
-    font-size: 18px;
-    font-weight: 500;
-    letter-spacing: -0.02em;
-  }
-
-  header span {
-    font-size: 13px;
-    color: #888780;
-  }
-
-  #last-updated {
-    font-size: 12px;
-    color: #888780;
-  }
-
-  .container {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 2rem 1.5rem;
-  }
-
-  /* AUTH SCREEN */
-  #auth-screen {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 70vh;
-    text-align: center;
-  }
-
-  .auth-card {
-    background: #fff;
-    border: 0.5px solid #d3d1c7;
-    border-radius: 16px;
-    padding: 2.5rem 3rem;
-    max-width: 440px;
-    width: 100%;
-  }
-
-  .auth-card h2 {
-    font-size: 20px;
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-    letter-spacing: -0.02em;
-  }
-
-  .auth-card p {
-    font-size: 14px;
-    color: #5f5e5a;
-    margin-bottom: 2rem;
-    line-height: 1.6;
-  }
-
-  .field-group {
-    text-align: left;
-    margin-bottom: 1rem;
-  }
-
-  .field-group label {
-    display: block;
-    font-size: 12px;
-    font-weight: 500;
-    color: #5f5e5a;
-    margin-bottom: 6px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .field-group input {
-    width: 100%;
-    padding: 10px 14px;
-    border: 0.5px solid #d3d1c7;
-    border-radius: 8px;
-    font-size: 14px;
-    background: #f5f4f0;
-    color: #1a1a18;
-    font-family: 'SF Mono', 'Consolas', monospace;
-    transition: border-color 0.15s;
-  }
-
-  .field-group input:focus {
-    outline: none;
-    border-color: #888780;
-    background: #fff;
-  }
-
-  .btn-connect {
-    width: 100%;
-    padding: 12px;
-    background: #1a1a18;
-    color: #f5f4f0;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    margin-top: 0.5rem;
-    transition: opacity 0.15s;
-  }
-
+  #auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 70vh; text-align: center; }
+  .auth-card { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 16px; padding: 2.5rem 3rem; max-width: 440px; width: 100%; }
+  .auth-card h2 { font-size: 20px; font-weight: 500; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+  .auth-card p { font-size: 14px; color: #5f5e5a; margin-bottom: 2rem; line-height: 1.6; }
+  .field-group { text-align: left; margin-bottom: 1rem; }
+  .field-group label { display: block; font-size: 12px; font-weight: 500; color: #5f5e5a; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .field-group input { width: 100%; padding: 10px 14px; border: 0.5px solid #d3d1c7; border-radius: 8px; font-size: 14px; background: #f5f4f0; color: #1a1a18; font-family: 'SF Mono','Consolas',monospace; }
+  .field-group input:focus { outline: none; border-color: #888780; background: #fff; }
+  .btn-connect { width: 100%; padding: 12px; background: #1a1a18; color: #f5f4f0; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 0.5rem; }
   .btn-connect:hover { opacity: 0.85; }
-  .btn-connect:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  .help-link {
-    font-size: 12px;
-    color: #888780;
-    margin-top: 1.25rem;
-    display: block;
-    text-align: center;
-  }
-
+  .help-link { font-size: 12px; color: #888780; margin-top: 1.25rem; display: block; line-height: 1.6; }
   .help-link a { color: #5f5e5a; text-decoration: underline; }
+  .error-banner { background: #fcebeb; border: 0.5px solid #f09595; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #a32d2d; margin-bottom: 1rem; display: none; }
 
-  /* ERROR */
-  .error-banner {
-    background: #fcebeb;
-    border: 0.5px solid #f09595;
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-size: 13px;
-    color: #a32d2d;
-    margin-bottom: 1rem;
-    display: none;
-  }
-
-  /* DASHBOARD */
   #dashboard-screen { display: none; }
+  .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+  .total-card { background: #1a1a18; color: #f5f4f0; border-radius: 16px; padding: 1.5rem 2rem; margin-bottom: 1rem; }
+  .total-card .label { font-size: 12px; color: #888780; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.5rem; }
+  .total-card .amount { font-size: 36px; font-weight: 500; letter-spacing: -0.03em; }
+  .total-card .amount.negative { color: #f0a0a0; }
+  .total-card .sub { font-size: 13px; color: #888780; margin-top: 4px; }
 
-  .top-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 2rem;
-  }
+  .info-note { font-size: 12px; color: #6b6a64; background: #efeee9; border: 0.5px solid #e0dfd7; border-radius: 10px; padding: 10px 14px; margin-bottom: 2rem; line-height: 1.55; }
 
-  .total-card {
-    background: #1a1a18;
-    color: #f5f4f0;
-    border-radius: 16px;
-    padding: 1.5rem 2rem;
-    margin-bottom: 2rem;
-  }
-
-  .total-card .label {
-    font-size: 12px;
-    color: #888780;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-bottom: 0.5rem;
-  }
-
-  .total-card .amount {
-    font-size: 36px;
-    font-weight: 500;
-    letter-spacing: -0.03em;
-  }
-
-  .total-card .sub {
-    font-size: 13px;
-    color: #888780;
-    margin-top: 4px;
-  }
-
-  .orgs-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 1rem;
-    margin-bottom: 2rem;
-  }
-
-  .org-card {
-    background: #fff;
-    border: 0.5px solid #d3d1c7;
-    border-radius: 16px;
-    overflow: hidden;
-  }
-
-  .org-header {
-    padding: 1rem 1.25rem 0.75rem;
-    border-bottom: 0.5px solid #e8e7e1;
-  }
-
-  .org-name {
-    font-size: 14px;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-    margin-bottom: 4px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .org-total {
-    font-size: 22px;
-    font-weight: 500;
-    letter-spacing: -0.03em;
-    color: #1a1a18;
-  }
-
+  .orgs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+  .org-card { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 16px; overflow: hidden; }
+  .org-header { padding: 1rem 1.25rem 0.85rem; border-bottom: 0.5px solid #e8e7e1; }
+  .org-name { font-size: 14px; font-weight: 500; letter-spacing: -0.01em; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .org-total { font-size: 22px; font-weight: 500; letter-spacing: -0.03em; color: #1a1a18; }
   .org-total.negative { color: #a32d2d; }
-
-  .accounts-list {
-    padding: 0.5rem 0;
-  }
-
-  .account-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 1.25rem;
-    font-size: 13px;
-    border-bottom: 0.5px solid #f0efe9;
-  }
-
+  .org-sub { font-size: 11px; color: #888780; margin-top: 2px; }
+  .accounts-list { padding: 0.35rem 0; }
+  .account-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 11px 1.25rem; font-size: 13px; border-bottom: 0.5px solid #f0efe9; gap: 12px; }
   .account-row:last-child { border-bottom: none; }
-
-  .account-name {
-    color: #5f5e5a;
-    flex: 1;
-    margin-right: 1rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .account-balance {
-    font-weight: 500;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-  }
-
+  .account-name { color: #1a1a18; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-top: 2px; }
+  .acct-right { text-align: right; min-width: 130px; }
+  .account-balance { font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .account-balance.negative { color: #a32d2d; }
-
-  .loading-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 1rem 1.25rem;
-    font-size: 13px;
-    color: #888780;
-  }
-
-  .spinner {
-    width: 14px;
-    height: 14px;
-    border: 2px solid #d3d1c7;
-    border-top-color: #5f5e5a;
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-  }
-
+  .fig-lbl { font-size: 10px; color: #a3a299; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+  .stmt-wrap { margin-top: 2px; }
+  .stmt-input { width: 110px; text-align: right; padding: 4px 8px; border: 0.5px solid #d3d1c7; border-radius: 6px; font-size: 13px; font-variant-numeric: tabular-nums; background: #faf9f6; color: #1a1a18; font-family: inherit; }
+  .stmt-input:focus { outline: none; border-color: #888780; background: #fff; }
+  .diff-line { font-size: 11px; margin-top: 4px; min-height: 14px; }
+  .diff-line.warn { color: #b06a1f; }
+  .diff-line.ok { color: #63a522; }
+  .loading-row { display: flex; align-items: center; gap: 8px; padding: 1rem 1.25rem; font-size: 13px; color: #888780; }
+  .spinner { width: 14px; height: 14px; border: 2px solid #d3d1c7; border-top-color: #5f5e5a; border-radius: 50%; animation: spin 0.7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-
-  .btn-refresh {
-    background: #fff;
-    border: 0.5px solid #d3d1c7;
-    border-radius: 8px;
-    padding: 8px 16px;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    color: #1a1a18;
-    transition: background 0.15s;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
+  .btn-refresh { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer; color: #1a1a18; display: flex; align-items: center; gap: 6px; }
   .btn-refresh:hover { background: #f5f4f0; }
-
-  .btn-signout {
-    background: none;
-    border: none;
-    font-size: 13px;
-    color: #888780;
-    cursor: pointer;
-    padding: 8px;
-    text-decoration: underline;
-  }
-
-  .currency-tag {
-    font-size: 11px;
-    color: #888780;
-    background: #f5f4f0;
-    border-radius: 4px;
-    padding: 2px 6px;
-    margin-left: 6px;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .status-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #63a522;
-    display: inline-block;
-    margin-right: 6px;
-  }
-
+  .btn-signout { background: none; border: none; font-size: 13px; color: #888780; cursor: pointer; padding: 8px; text-decoration: underline; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #63a522; display: inline-block; margin-right: 6px; }
   .status-dot.error { background: #e24b4a; }
 
-  /* OAUTH CALLBACK */
-  #callback-screen {
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 70vh;
-    text-align: center;
-    gap: 1rem;
-  }
-
-  #callback-screen p {
-    font-size: 15px;
-    color: #5f5e5a;
-  }
+  #callback-screen { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 70vh; text-align: center; gap: 1rem; }
+  #callback-screen p { font-size: 15px; color: #5f5e5a; }
 </style>
 </head>
 <body>
@@ -352,59 +79,53 @@
 
 <div class="container">
 
-  <!-- SETUP SCREEN -->
   <div id="auth-screen">
     <div class="auth-card">
       <h2>Connect to Xero</h2>
       <p>Enter your Xero OAuth app credentials to get started. These are stored only in your browser.</p>
-
       <div id="error-msg" class="error-banner"></div>
-
       <div class="field-group">
         <label>Client ID</label>
         <input type="text" id="client-id" placeholder="Paste your Xero Client ID" autocomplete="off" />
       </div>
-
       <div class="field-group">
         <label>Client Secret</label>
         <input type="password" id="client-secret" placeholder="Paste your Xero Client Secret" autocomplete="off" />
       </div>
-
-      <button class="btn-connect" id="btn-auth" onclick="startAuth()">Connect to Xero →</button>
-
+      <button class="btn-connect" onclick="startAuth()">Connect to Xero &rarr;</button>
       <span class="help-link">
-        No credentials yet? <a href="https://developer.xero.com/app/manage" target="_blank">Create a free Xero app</a> — takes 5 mins.<br>Set the redirect URI to: <strong id="redirect-uri-display"></strong>
+        No credentials yet? <a href="https://developer.xero.com/app/manage" target="_blank">Create a free Xero app</a>.<br>
+        Set the redirect URI to: <strong id="redirect-uri-display"></strong>
       </span>
     </div>
   </div>
 
-  <!-- CALLBACK / LOADING -->
   <div id="callback-screen">
     <div class="spinner" style="width:24px;height:24px;border-width:3px;"></div>
-    <p id="callback-msg">Connecting to Xero…</p>
+    <p id="callback-msg">Connecting to Xero&hellip;</p>
   </div>
 
-  <!-- DASHBOARD -->
   <div id="dashboard-screen">
     <div class="top-bar">
-      <div>
-        <div style="font-size:12px;color:#888780;margin-bottom:2px;">
-          <span class="status-dot" id="status-dot"></span>
-          <span id="status-text">Live data</span>
-        </div>
+      <div style="font-size:12px;color:#888780;">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">Live data</span>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn-refresh" onclick="loadBalances()">
-          <span style="font-size:16px;">↻</span> Refresh
-        </button>
+        <button class="btn-refresh" onclick="loadBalances()"><span style="font-size:16px;">&#8635;</span> Refresh</button>
         <button class="btn-signout" onclick="signOut()">Sign out</button>
       </div>
     </div>
 
     <div class="total-card">
       <div class="label">Total cash across all entities</div>
-      <div class="amount" id="grand-total">—</div>
-      <div class="sub" id="entity-count">Loading…</div>
+      <div class="amount" id="grand-total">&mdash;</div>
+      <div class="sub" id="entity-count">Loading&hellip;</div>
+      <div class="sub">Total Balance in Xero: <span id="grand-xero">&mdash;</span></div>
+    </div>
+
+    <div class="info-note">
+      <strong>Balance in Xero</strong> is pulled live from the Xero API. <strong>Statement balance</strong> (the actual bank figure) cannot be retrieved via Xero&rsquo;s API &mdash; Xero deliberately does not expose unreconciled statement-line data. Type each account&rsquo;s statement balance once (from Xero&rsquo;s Business Overview) and it is saved in this browser; the headline total then reflects true cash, using Balance in Xero for any account you leave blank.
     </div>
 
     <div class="orgs-grid" id="orgs-grid"></div>
@@ -413,39 +134,61 @@
 </div>
 
 <script>
+const WORKER = 'https://xero-proxy.jj-026.workers.dev';
 const REDIRECT_URI = window.location.origin + window.location.pathname;
 const STORAGE_KEY = 'xero_dash_creds';
+
+const ORG_NAMES = [
+  'Enterprise4All (North West) Limited',
+  'Stand & Deliver Limited',
+  'Safe Space Talent Limited'
+];
+
+const STATE = { entities: [] };
 
 document.getElementById('redirect-uri-display').textContent = REDIRECT_URI;
 
 function fmt(amount, currency) {
-  const sym = currency === 'GBP' ? '£' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : (currency + ' ');
+  const sym = currency === 'GBP' ? '\u00A3' : currency === 'USD' ? '$' : currency === 'EUR' ? '\u20AC' : (currency + ' ');
   const abs = Math.abs(amount);
   const str = sym + abs.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return amount < 0 ? '−' + str : str;
+  return amount < 0 ? '\u2212' + str : str;
+}
+function escapeHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function parseAmt(val) {
+  if (val === null || val === undefined || val === '') return 0;
+  const s = String(val);
+  const neg = s.includes('(') || s.trim().charAt(0) === '-';
+  const n = parseFloat(s.replace(/[^0-9.]/g, '')) || 0;
+  return neg ? -n : n;
 }
 
-function showError(msg) {
-  const el = document.getElementById('error-msg');
-  el.textContent = msg;
-  el.style.display = 'block';
+/* ----- manual statement balances (persisted in browser) ----- */
+function stmtKey(tenantId, name) { return 'xero_stmt::' + tenantId + '::' + name; }
+function getStmt(tenantId, name) {
+  const v = localStorage.getItem(stmtKey(tenantId, name));
+  if (v === null || v === '') return null;
+  const n = parseFloat(v);
+  return isNaN(n) ? null : n;
+}
+function setStmt(tenantId, name, raw) {
+  const clean = String(raw).replace(/[^0-9.\-]/g, '');
+  const key = stmtKey(tenantId, name);
+  if (clean === '' || clean === '-' || clean === '.') localStorage.removeItem(key);
+  else localStorage.setItem(key, clean);
 }
 
-function saveCredentials(clientId, clientSecret) {
-  sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ clientId, clientSecret }));
-}
-
-function getCredentials() {
-  try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY)); } catch { return null; }
-}
+/* ----- credentials & tokens ----- */
+function showError(msg) { const el = document.getElementById('error-msg'); el.textContent = msg; el.style.display = 'block'; }
+function saveCredentials(clientId, clientSecret) { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ clientId, clientSecret })); }
+function getCredentials() { try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY)); } catch { return null; } }
 
 function startAuth() {
   const clientId = document.getElementById('client-id').value.trim();
   const clientSecret = document.getElementById('client-secret').value.trim();
-  if (!clientId || !clientSecret) {
-    showError('Please enter both your Client ID and Client Secret.');
-    return;
-  }
+  if (!clientId || !clientSecret) { showError('Please enter both your Client ID and Client Secret.'); return; }
   saveCredentials(clientId, clientSecret);
   const state = Math.random().toString(36).slice(2);
   sessionStorage.setItem('xero_state', state);
@@ -453,7 +196,7 @@ function startAuth() {
     response_type: 'code',
     client_id: clientId,
     redirect_uri: REDIRECT_URI,
-    scope: 'openid profile email accounting.settings.read accounting.banktransactions.read accounting.reports.banksummary.read accounting.reports.balancesheet.read offline_access',
+    scope: 'openid profile email accounting.settings.read accounting.reports.banksummary.read offline_access',
     state
   });
   window.location.href = 'https://login.xero.com/identity/connect/authorize?' + params;
@@ -463,168 +206,63 @@ async function exchangeCode(code) {
   const creds = getCredentials();
   if (!creds) throw new Error('Credentials not found. Please reconnect.');
   const basicAuth = btoa(creds.clientId + ':' + creds.clientSecret);
-  const res = await fetch('https://xero-proxy.jj-026.workers.dev/token', {
+  const res = await fetch(WORKER + '/token', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': 'Basic ' + basicAuth
-    },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: REDIRECT_URI
-    })
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Basic ' + basicAuth },
+    body: new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: REDIRECT_URI })
   });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error('Token exchange failed: ' + err);
-  }
+  if (!res.ok) throw new Error('Token exchange failed: ' + (await res.text()));
   return res.json();
 }
-
 async function refreshToken(refreshTok) {
   const creds = getCredentials();
   if (!creds) throw new Error('No credentials stored.');
   const basicAuth = btoa(creds.clientId + ':' + creds.clientSecret);
-  const res = await fetch('https://xero-proxy.jj-026.workers.dev/token', {
+  const res = await fetch(WORKER + '/token', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': 'Basic ' + basicAuth
-    },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: refreshTok
-    })
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Basic ' + basicAuth },
+    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshTok })
   });
   if (!res.ok) throw new Error('Token refresh failed');
   return res.json();
 }
-
-function saveTokens(tokens) {
-  const expiry = Date.now() + tokens.expires_in * 1000;
-  sessionStorage.setItem('xero_tokens', JSON.stringify({ ...tokens, expiry }));
-}
-
-function getTokens() {
-  try { return JSON.parse(sessionStorage.getItem('xero_tokens')); } catch { return null; }
-}
-
+function saveTokens(tokens) { const expiry = Date.now() + tokens.expires_in * 1000; sessionStorage.setItem('xero_tokens', JSON.stringify({ ...tokens, expiry })); }
+function getTokens() { try { return JSON.parse(sessionStorage.getItem('xero_tokens')); } catch { return null; } }
 async function getValidAccessToken() {
   let tokens = getTokens();
   if (!tokens) throw new Error('Not authenticated');
-  if (Date.now() > tokens.expiry - 60000) {
-    const refreshed = await refreshToken(tokens.refresh_token);
-    saveTokens(refreshed);
-    tokens = refreshed;
-  }
+  if (Date.now() > tokens.expiry - 60000) { const r = await refreshToken(tokens.refresh_token); saveTokens(r); tokens = r; }
   return tokens.access_token;
 }
-
 async function getTenants(accessToken) {
-  const res = await fetch('https://xero-proxy.jj-026.workers.dev/connections', {
-    headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' }
-  });
-  if (!res.ok) throw new Error('Failed to fetch tenants');
+  const res = await fetch(WORKER + '/connections', { headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' } });
+  if (!res.ok) throw new Error('Failed to fetch organisations');
   return res.json();
 }
 
-async function getBankAccounts(accessToken, tenantId) {
-  const res = await fetch('https://xero-proxy.jj-026.workers.dev/xero/Accounts?where=Type%3D%3D%22BANK%22&Status%3D%3D%22ACTIVE%22', {
+/* ----- balances (Balance in Xero via BankSummary, col 4 = closing balance) ----- */
+async function getEntityBalances(accessToken, tenantId) {
+  const res = await fetch(WORKER + '/xero/Reports/BankSummary', {
     headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
   });
-  if (!res.ok) throw new Error('Failed to fetch accounts for tenant ' + tenantId);
+  if (!res.ok) throw new Error('BankSummary failed: ' + res.status);
   const data = await res.json();
-  return data.Accounts || [];
-}
-
-async function getBalanceSheet(accessToken, tenantId) {
-  const today = new Date().toISOString().split('T')[0];
-  const res = await fetch(`https://xero-proxy.jj-026.workers.dev/xero/Reports/BalanceSheet?date=${today}&payments=true`, {
-    headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
-  });
-  if (!res.ok) throw new Error('Failed to fetch balance sheet');
-  return res.json();
-}
-
-async function getBankStatementBalances(accessToken, tenantId) {
-  function parseAmt(val) {
-    if (!val && val !== 0) return 0;
-    const s = String(val);
-    const neg = s.includes('(');
-    const n = parseFloat(s.replace(/[^0-9.]/g, '')) || 0;
-    return neg ? -n : n;
-  }
-
-  // Fetch BankSummary and Accounts list in parallel
-  const [summaryRes, acctRes] = await Promise.all([
-    fetch('https://xero-proxy.jj-026.workers.dev/xero/Reports/BankSummary', {
-      headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
-    }),
-    fetch('https://xero-proxy.jj-026.workers.dev/xero/Accounts?where=Type%3D%3D%22BANK%22', {
-      headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
-    })
-  ]);
-
-  if (!summaryRes.ok) throw new Error('BankSummary failed: ' + summaryRes.status);
-  const summaryData = await summaryRes.json();
-  const report = summaryData.Reports?.[0];
+  const report = data.Reports && data.Reports[0];
   if (!report) return [];
-
-  // Build name->accountID map from Accounts endpoint
-  const accountsData = acctRes.ok ? await acctRes.json() : { Accounts: [] };
-  const accountMap = {};
-  for (const a of accountsData.Accounts || []) {
-    accountMap[a.Name] = a.AccountID;
-  }
-
-  // Parse BankSummary rows
-  const accountRows = [];
+  const out = [];
   for (const section of report.Rows || []) {
     const rows = section.RowType === 'Section' ? (section.Rows || []) : [section];
     for (const row of rows) {
-      if (row.RowType === 'Row') {
-        const cells = row.Cells || [];
-        const name = cells[0]?.Value;
-        if (!name) continue;
-        const xeroBalance = parseAmt(cells[4]?.Value) || parseAmt(cells[1]?.Value);
-        const accountID = accountMap[name] || '';
-        accountRows.push({ name, currency: 'GBP', balance: xeroBalance, xeroBalance, accountID, unreconciledCount: null, unreconciledAmount: null });
-      }
+      if (row.RowType !== 'Row') continue;
+      const cells = row.Cells || [];
+      const name = cells[0] && cells[0].Value;
+      if (!name) continue;
+      const closing = cells.length >= 5 ? parseAmt(cells[4].Value) : parseAmt(cells[cells.length - 1].Value);
+      out.push({ name: name, currency: 'GBP', balance: closing });
     }
   }
-
-  // Fetch unreconciled tx count+amount per account IN PARALLEL
-  const promises = accountRows.map(async (acct) => {
-    if (!acct.accountID) return acct;
-    try {
-      const url = `https://xero-proxy.jj-026.workers.dev/xero/BankTransactions?BankAccount.AccountID=${acct.accountID}&IsReconciled=false&page=1`;
-      const res = await fetch(url, {
-        headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
-      });
-      if (!res.ok) return acct;
-      const data = await res.json();
-      const txs = data.BankTransactions || [];
-      let unreconciledAmount = 0;
-      for (const tx of txs) {
-        const amt = tx.Total || 0;
-        if (tx.Type === 'RECEIVE') unreconciledAmount += amt;
-        else unreconciledAmount -= amt;
-      }
-      acct.unreconciledCount = txs.length;
-      acct.unreconciledAmount = unreconciledAmount;
-    } catch(e) {}
-    return acct;
-  });
-
-  return Promise.all(promises);
+  return out;
 }
-
-const ORG_NAMES = [
-  'Enterprise4All (North West) Limited',
-  'Stand & Deliver Limited',
-  'Safe Space Talent Limited'
-];
 
 function matchOrg(tenantName) {
   const aliases = {
@@ -635,57 +273,104 @@ function matchOrg(tenantName) {
     'safe space talent': 'Safe Space Talent Limited',
     'safe space': 'Safe Space Talent Limited'
   };
-  const key = tenantName.toLowerCase();
-  for (const [alias, full] of Object.entries(aliases)) {
-    if (key.includes(alias)) return full;
-  }
+  const key = (tenantName || '').toLowerCase();
+  for (const a in aliases) { if (key.indexOf(a) !== -1) return aliases[a]; }
   return tenantName;
 }
 
-function renderOrgCard(orgName, accounts, loading) {
-  const total = accounts.reduce((s, a) => s + (a.balance || 0), 0);
-  const negClass = total < 0 ? ' negative' : '';
+/* ----- rendering ----- */
+function renderSkeleton() {
+  const grid = document.getElementById('orgs-grid');
+  grid.innerHTML = ORG_NAMES.map(function (n) {
+    return '<div class="org-card"><div class="org-header"><div class="org-name">' + escapeHtml(n) +
+      '</div><div class="org-total">&mdash;</div><div class="org-sub">Loading</div></div>' +
+      '<div class="accounts-list"><div class="loading-row"><div class="spinner"></div>Fetching balances&hellip;</div></div></div>';
+  }).join('');
+}
 
-  let accountsHtml = '';
-  if (loading) {
-    accountsHtml = `<div class="loading-row"><div class="spinner"></div>Fetching balances…</div>`;
-  } else if (!accounts.length) {
-    accountsHtml = `<div class="loading-row" style="color:#888780">No bank accounts found</div>`;
-  } else {
-    for (const a of accounts) {
-      const negAmt = a.balance < 0 ? ' negative' : '';
-      const statementBalance = (a.unreconciledAmount !== null) ? a.balance + a.unreconciledAmount : null;
-      const stmtNeg = statementBalance !== null && statementBalance < 0 ? 'color:#a32d2d;' : '';
-      const diffHtml = (a.unreconciledCount === null)
-        ? '' // still loading or no accountID
-        : (a.unreconciledCount === 0)
-          ? `<div style="font-size:11px;color:#63a522;margin-top:4px;">✓ Fully reconciled</div>`
-          : `<div style="border-top:0.5px solid #f0efe9;margin-top:6px;padding-top:6px;">
-               <div style="font-size:11px;color:#888780;">Unreconciled (${a.unreconciledCount} items): ${fmt(a.unreconciledAmount, a.currency)}</div>
-               <div style="font-weight:600;margin-top:3px;${stmtNeg}">${fmt(statementBalance, a.currency)}</div>
-               <div style="font-size:11px;color:#888780;">Est. Statement Balance</div>
-             </div>`;
-      accountsHtml += `
-        <div class="account-row" style="align-items:flex-start;padding-top:10px;padding-bottom:10px;">
-          <span class="account-name" style="padding-top:2px;">${a.name}</span>
-          <div style="text-align:right;min-width:120px;">
-            <div class="account-balance${negAmt}">${fmt(a.balance, a.currency)}</div>
-            <div style="font-size:11px;color:#888780;margin-top:2px;">Balance in Xero</div>
-            ${diffHtml}
-          </div>
-        </div>`;
+function renderDashboard() {
+  const grid = document.getElementById('orgs-grid');
+  let html = '';
+  STATE.entities.forEach(function (ent, ei) {
+    let rows = '';
+    if (!ent.accounts.length) {
+      rows = '<div class="loading-row" style="color:#888780">No bank accounts found</div>';
+    } else {
+      ent.accounts.forEach(function (acct, ai) {
+        const negAmt = acct.balance < 0 ? ' negative' : '';
+        rows +=
+          '<div class="account-row">' +
+            '<span class="account-name" title="' + escapeHtml(acct.name) + '">' + escapeHtml(acct.name) + '</span>' +
+            '<div class="acct-right">' +
+              '<div class="account-balance' + negAmt + '">' + fmt(acct.balance, acct.currency) + '</div>' +
+              '<div class="fig-lbl">Balance in Xero</div>' +
+              '<div class="stmt-wrap"><input class="stmt-input" inputmode="decimal" placeholder="enter" ' +
+                'data-ei="' + ei + '" data-ai="' + ai + '" ' +
+                'data-tenant="' + encodeURIComponent(ent.tenantId) + '" ' +
+                'data-account="' + encodeURIComponent(acct.name) + '"></div>' +
+              '<div class="fig-lbl">Statement balance</div>' +
+              '<div class="diff-line" id="diff_' + ei + '_' + ai + '"></div>' +
+            '</div>' +
+          '</div>';
+      });
     }
-  }
+    html +=
+      '<div class="org-card">' +
+        '<div class="org-header">' +
+          '<div class="org-name" title="' + escapeHtml(ent.displayName) + '">' + escapeHtml(ent.displayName) + '</div>' +
+          '<div class="org-total" id="orgstmt_' + ei + '">&mdash;</div>' +
+          '<div class="org-sub">Statement balance \u00B7 <span id="orgxero_' + ei + '">&mdash;</span> in Xero</div>' +
+        '</div>' +
+        '<div class="accounts-list">' + rows + '</div>' +
+      '</div>';
+  });
+  grid.innerHTML = html;
 
-  return `
-    <div class="org-card" id="org-${orgName.replace(/\W/g,'_')}">
-      <div class="org-header">
-        <div class="org-name" title="${orgName}">${orgName}</div>
-        <div class="org-total${negClass}">${loading ? '—' : fmt(total, accounts[0]?.currency || 'GBP')}</div>
-        <div style="font-size:11px;color:#888780;margin-top:2px;">Balance in Xero</div>
-      </div>
-      <div class="accounts-list">${accountsHtml}</div>
-    </div>`;
+  // prefill inputs + attach listeners
+  const inputs = grid.querySelectorAll('.stmt-input');
+  inputs.forEach(function (el) {
+    const tenant = decodeURIComponent(el.getAttribute('data-tenant'));
+    const account = decodeURIComponent(el.getAttribute('data-account'));
+    const stored = getStmt(tenant, account);
+    if (stored !== null) el.value = stored;
+    el.addEventListener('input', function () {
+      setStmt(tenant, account, el.value);
+      recompute();
+    });
+  });
+
+  recompute();
+}
+
+function recompute() {
+  let grandX = 0, grandS = 0;
+  STATE.entities.forEach(function (ent, ei) {
+    let oX = 0, oS = 0;
+    ent.accounts.forEach(function (acct, ai) {
+      const xb = acct.balance;
+      const s = getStmt(ent.tenantId, acct.name);
+      const eff = s !== null ? s : xb;
+      oX += xb; oS += eff; grandX += xb; grandS += eff;
+      const diffEl = document.getElementById('diff_' + ei + '_' + ai);
+      if (diffEl) {
+        if (s === null) { diffEl.textContent = ''; diffEl.className = 'diff-line'; }
+        else {
+          const d = s - xb;
+          if (Math.abs(d) < 0.005) { diffEl.textContent = 'Matches Xero'; diffEl.className = 'diff-line ok'; }
+          else { diffEl.textContent = 'Diff ' + fmt(d, acct.currency); diffEl.className = 'diff-line warn'; }
+        }
+      }
+    });
+    const osEl = document.getElementById('orgstmt_' + ei);
+    if (osEl) { osEl.textContent = fmt(oS, 'GBP'); osEl.className = 'org-total' + (oS < 0 ? ' negative' : ''); }
+    const oxEl = document.getElementById('orgxero_' + ei);
+    if (oxEl) oxEl.textContent = fmt(oX, 'GBP');
+  });
+  const gt = document.getElementById('grand-total');
+  gt.textContent = fmt(grandS, 'GBP');
+  gt.className = 'amount' + (grandS < 0 ? ' negative' : '');
+  const gx = document.getElementById('grand-xero');
+  if (gx) gx.textContent = fmt(grandX, 'GBP');
 }
 
 async function loadBalances() {
@@ -693,57 +378,55 @@ async function loadBalances() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('callback-screen').style.display = 'none';
 
-  const grid = document.getElementById('orgs-grid');
   const statusDot = document.getElementById('status-dot');
   const statusText = document.getElementById('status-text');
-
-  grid.innerHTML = ORG_NAMES.map(n => renderOrgCard(n, [], true)).join('');
-  document.getElementById('grand-total').textContent = '—';
-  document.getElementById('entity-count').textContent = 'Loading all entities…';
+  renderSkeleton();
+  document.getElementById('grand-total').textContent = '\u2014';
+  document.getElementById('entity-count').textContent = 'Loading all entities\u2026';
 
   try {
     const accessToken = await getValidAccessToken();
     const tenants = await getTenants(accessToken);
 
-    const orgData = {};
-    let grandTotal = 0;
-
-    for (const tenant of tenants) {
-      const displayName = matchOrg(tenant.tenantName);
+    const results = await Promise.all(tenants.map(async function (t) {
       try {
-        const accounts = await getBankStatementBalances(accessToken, tenant.tenantId);
-        orgData[displayName] = accounts;
-        accounts.forEach(a => grandTotal += a.balance || 0);
+        const accounts = await getEntityBalances(accessToken, t.tenantId);
+        return { displayName: matchOrg(t.tenantName), tenantId: t.tenantId, accounts: accounts };
       } catch (e) {
-        orgData[displayName] = [];
+        return { displayName: matchOrg(t.tenantName), tenantId: t.tenantId, accounts: [] };
       }
-    }
+    }));
 
-    for (const name of ORG_NAMES) {
-      if (!orgData[name]) orgData[name] = [];
-    }
+    // order by ORG_NAMES, append any extras
+    const byName = {};
+    results.forEach(function (r) { byName[r.displayName] = r; });
+    const ordered = [];
+    ORG_NAMES.forEach(function (n) { if (byName[n]) { ordered.push(byName[n]); delete byName[n]; } });
+    Object.keys(byName).forEach(function (k) { ordered.push(byName[k]); });
+    STATE.entities = ordered;
 
-    grid.innerHTML = ORG_NAMES.map(name => renderOrgCard(name, orgData[name] || [], false)).join('');
+    let accountCount = 0;
+    ordered.forEach(function (e) { accountCount += e.accounts.length; });
 
-    const allAccounts = Object.values(orgData).flat();
-    document.getElementById('grand-total').textContent = fmt(grandTotal, 'GBP');
+    renderDashboard();
+
     document.getElementById('entity-count').textContent =
-      `Across ${tenants.length} connected entit${tenants.length === 1 ? 'y' : 'ies'} · ${allAccounts.length} bank account${allAccounts.length !== 1 ? 's' : ''}`;
+      'Across ' + tenants.length + ' connected entit' + (tenants.length === 1 ? 'y' : 'ies') +
+      ' \u00B7 ' + accountCount + ' bank account' + (accountCount !== 1 ? 's' : '');
 
     const now = new Date();
     document.getElementById('last-updated').textContent = 'Updated ' + now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     statusDot.className = 'status-dot';
     statusText.textContent = 'Live data';
-
   } catch (e) {
     statusDot.className = 'status-dot error';
     statusText.textContent = 'Error loading data';
     document.getElementById('entity-count').textContent = e.message;
-    console.error(e);
   }
 }
 
 function signOut() {
+  // keep manual statement balances; only clear session auth
   sessionStorage.clear();
   window.location.href = REDIRECT_URI;
 }
@@ -753,23 +436,16 @@ async function handleCallback() {
   const code = params.get('code');
   const state = params.get('state');
   const savedState = sessionStorage.getItem('xero_state');
-
   if (!code) return false;
-
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('callback-screen').style.display = 'flex';
-
-  if (state !== savedState) {
-    document.getElementById('callback-msg').textContent = 'Security error: state mismatch. Please try again.';
-    return true;
-  }
-
+  if (state !== savedState) { document.getElementById('callback-msg').textContent = 'Security error: state mismatch. Please try again.'; return true; }
   try {
-    document.getElementById('callback-msg').textContent = 'Exchanging token with Xero…';
+    document.getElementById('callback-msg').textContent = 'Exchanging token with Xero\u2026';
     const tokens = await exchangeCode(code);
     saveTokens(tokens);
     window.history.replaceState({}, '', REDIRECT_URI);
-    document.getElementById('callback-msg').textContent = 'Loading your balances…';
+    document.getElementById('callback-msg').textContent = 'Loading your balances\u2026';
     await loadBalances();
   } catch (e) {
     document.getElementById('callback-msg').textContent = 'Error: ' + e.message;
@@ -780,13 +456,8 @@ async function handleCallback() {
 async function init() {
   const isCallback = await handleCallback();
   if (isCallback) return;
-
-  const tokens = getTokens();
-  if (tokens) {
-    await loadBalances();
-  } else {
-    document.getElementById('auth-screen').style.display = 'flex';
-  }
+  if (getTokens()) { await loadBalances(); }
+  else { document.getElementById('auth-screen').style.display = 'flex'; }
 }
 
 init();
