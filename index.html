@@ -548,40 +548,40 @@ async function getBalanceSheet(accessToken, tenantId) {
 }
 
 async function getBankStatementBalances(accessToken, tenantId) {
-  // Use BankSummary report — we know this works and returns real data
-  const res = await fetch('https://xero-proxy.jj-026.workers.dev/xero/Reports/BankSummary', {
+  // Get all bank accounts
+  const acctRes = await fetch('https://xero-proxy.jj-026.workers.dev/xero/Accounts?where=Type%3D%3D%22BANK%22', {
     headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
   });
-  if (!res.ok) throw new Error('BankSummary failed: ' + res.status);
-  const data = await res.json();
+  if (!acctRes.ok) throw new Error('Failed to fetch accounts');
+  const accounts = (await acctRes.json()).Accounts || [];
 
-  // Log the FULL raw response so we can see every cell value
-  console.log('FULL BANKSUMMARY RESPONSE:', JSON.stringify(data));
-
-  const results = [];
-  const report = data.Reports?.[0];
-  if (!report) return results;
-
-  for (const section of report.Rows || []) {
-    const rows = section.RowType === 'Section' ? (section.Rows || []) : [section];
-    for (const row of rows) {
-      if (row.RowType === 'Row') {
-        const cells = row.Cells || [];
-        console.log('ROW CELLS:', cells.map(c => c.Value));
-        const name = cells[0]?.Value;
-        if (!name) continue;
-        // Column 4 = Statement balance (calculated) in BankSummary report
-        // Column 1 = Balance in Xero (wrong), Column 4 = Statement balance (right)
-        let balance = 0;
-        const raw = String(cells[4]?.Value || cells[3]?.Value || '0');
-        const negative = raw.includes('(');
-        const cleaned = raw.replace(/[^0-9.]/g, '');
-        balance = negative ? -parseFloat(cleaned) : (parseFloat(cleaned) || 0);
-        results.push({ name, currency: 'GBP', balance });
+  // For each account fetch the most recent statement line (has running Balance field)
+  const promises = accounts.map(async (acct) => {
+    try {
+      // BankTransactions with StatementLine=true returns the bank feed lines with Balance
+      const today = new Date().toISOString().split('T')[0];
+      const url = `https://xero-proxy.jj-026.workers.dev/xero/BankTransactions?BankAccount.AccountID=${acct.AccountID}&page=1&pageSize=1&order=Date%20DESC&includeArchived=false`;
+      const res = await fetch(url, {
+        headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
+      });
+      if (!res.ok) return { name: acct.Name, currency: acct.CurrencyCode || 'GBP', balance: 0 };
+      const data = await res.json();
+      const txs = data.BankTransactions || [];
+      
+      // Log first transaction to see all available fields
+      if (txs.length > 0) {
+        console.log('TX fields for', acct.Name, ':', Object.keys(txs[0]), 'HasStatementBalance:', txs[0].HasStatementBalance, 'StatementBalance:', txs[0].StatementBalance, 'Balance:', txs[0].Balance);
       }
+
+      // Try to get balance from transaction
+      const balance = txs[0]?.Balance ?? txs[0]?.StatementBalance ?? txs[0]?.RunningBalance ?? 0;
+      return { name: acct.Name, currency: acct.CurrencyCode || 'GBP', balance };
+    } catch(e) {
+      return { name: acct.Name, currency: acct.CurrencyCode || 'GBP', balance: 0 };
     }
-  }
-  return results;
+  });
+
+  return Promise.all(promises);
 }
 
 const ORG_NAMES = [
