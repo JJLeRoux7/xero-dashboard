@@ -28,36 +28,33 @@
 
   #dashboard-screen { display: none; }
   .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
-  .total-card { background: #1a1a18; color: #f5f4f0; border-radius: 16px; padding: 1.5rem 2rem; margin-bottom: 1rem; }
+  .total-card { background: #1a1a18; color: #f5f4f0; border-radius: 16px; padding: 1.75rem 2rem; margin-bottom: 2rem; }
   .total-card .label { font-size: 12px; color: #888780; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.5rem; }
-  .total-card .amount { font-size: 36px; font-weight: 500; letter-spacing: -0.03em; }
+  .total-card .amount { font-size: 40px; font-weight: 500; letter-spacing: -0.03em; }
   .total-card .amount.negative { color: #f0a0a0; }
-  .total-card .sub { font-size: 13px; color: #888780; margin-top: 4px; }
+  .total-card .sub { font-size: 13px; color: #888780; margin-top: 6px; }
+  .total-card .hint { font-size: 12px; color: #6f6e68; margin-top: 4px; }
 
-  .info-note { font-size: 12px; color: #6b6a64; background: #efeee9; border: 0.5px solid #e0dfd7; border-radius: 10px; padding: 10px 14px; margin-bottom: 2rem; line-height: 1.55; }
-
-  .orgs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+  .orgs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 1rem; margin-bottom: 2rem; align-items: start; }
   .org-card { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 16px; overflow: hidden; }
-  .org-header { padding: 1rem 1.25rem 0.85rem; border-bottom: 0.5px solid #e8e7e1; }
-  .org-name { font-size: 14px; font-weight: 500; letter-spacing: -0.01em; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .org-total { font-size: 22px; font-weight: 500; letter-spacing: -0.03em; color: #1a1a18; }
+  .org-header { padding: 1.1rem 1.5rem 0.9rem; border-bottom: 0.5px solid #e8e7e1; }
+  .org-name { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .org-total { font-size: 26px; font-weight: 500; letter-spacing: -0.03em; color: #1a1a18; }
   .org-total.negative { color: #a32d2d; }
-  .org-sub { font-size: 11px; color: #888780; margin-top: 2px; }
-  .accounts-list { padding: 0.35rem 0; }
-  .account-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 11px 1.25rem; font-size: 13px; border-bottom: 0.5px solid #f0efe9; gap: 12px; }
+  .org-sub { font-size: 12px; color: #888780; margin-top: 3px; }
+  .accounts-list { padding: 0.25rem 0; }
+  .account-row { display: flex; justify-content: space-between; align-items: center; padding: 13px 1.5rem; border-bottom: 0.5px solid #f0efe9; gap: 14px; }
   .account-row:last-child { border-bottom: none; }
-  .account-name { color: #1a1a18; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-top: 2px; }
-  .acct-right { text-align: right; min-width: 130px; }
-  .account-balance { font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .account-name { font-size: 14px; color: #1a1a18; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .acct-right { text-align: right; min-width: 120px; }
+  .account-balance { font-size: 15px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; cursor: pointer; border-radius: 4px; padding: 1px 2px; }
+  .account-balance:hover { text-decoration: underline; text-decoration-style: dotted; text-decoration-color: #c2c0b6; }
   .account-balance.negative { color: #a32d2d; }
-  .fig-lbl { font-size: 10px; color: #a3a299; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
-  .stmt-wrap { margin-top: 2px; }
-  .stmt-input { width: 110px; text-align: right; padding: 4px 8px; border: 0.5px solid #d3d1c7; border-radius: 6px; font-size: 13px; font-variant-numeric: tabular-nums; background: #faf9f6; color: #1a1a18; font-family: inherit; }
-  .stmt-input:focus { outline: none; border-color: #888780; background: #fff; }
-  .diff-line { font-size: 11px; margin-top: 4px; min-height: 14px; }
-  .diff-line.warn { color: #b06a1f; }
-  .diff-line.ok { color: #63a522; }
-  .loading-row { display: flex; align-items: center; gap: 8px; padding: 1rem 1.25rem; font-size: 13px; color: #888780; }
+  .fig-lbl { font-size: 11px; color: #a3a299; margin-top: 2px; }
+  .fig-xero { font-size: 11px; color: #b3b1a8; margin-top: 1px; font-variant-numeric: tabular-nums; }
+  .stmt-edit { font-size: 15px; font-weight: 600; text-align: right; width: 118px; border: none; border-bottom: 1px solid #888780; background: transparent; color: #1a1a18; font-family: inherit; padding: 1px 2px; font-variant-numeric: tabular-nums; }
+  .stmt-edit:focus { outline: none; }
+  .loading-row { display: flex; align-items: center; gap: 8px; padding: 1rem 1.5rem; font-size: 13px; color: #888780; }
   .spinner { width: 14px; height: 14px; border: 2px solid #d3d1c7; border-top-color: #5f5e5a; border-radius: 50%; animation: spin 0.7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .btn-refresh { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer; color: #1a1a18; display: flex; align-items: center; gap: 6px; }
@@ -121,11 +118,7 @@
       <div class="label">Total cash across all entities</div>
       <div class="amount" id="grand-total">&mdash;</div>
       <div class="sub" id="entity-count">Loading&hellip;</div>
-      <div class="sub">Total Balance in Xero: <span id="grand-xero">&mdash;</span></div>
-    </div>
-
-    <div class="info-note">
-      <strong>Balance in Xero</strong> is pulled live from the Xero API. <strong>Statement balance</strong> (the actual bank figure) cannot be retrieved via Xero&rsquo;s API &mdash; Xero deliberately does not expose unreconciled statement-line data. Type each account&rsquo;s statement balance once (from Xero&rsquo;s Business Overview) and it is saved in this browser; the headline total then reflects true cash, using Balance in Xero for any account you leave blank.
+      <div class="hint">Tap any figure to set its bank statement balance (saved on this device)</div>
     </div>
 
     <div class="orgs-grid" id="orgs-grid"></div>
@@ -182,7 +175,7 @@ function setStmt(tenantId, name, raw) {
 
 /* ----- credentials & tokens ----- */
 function showError(msg) { const el = document.getElementById('error-msg'); el.textContent = msg; el.style.display = 'block'; }
-function saveCredentials(clientId, clientSecret) { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ clientId, clientSecret })); }
+function saveCredentials(id, secret) { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ clientId: id, clientSecret: secret })); }
 function getCredentials() { try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY)); } catch { return null; } }
 
 function startAuth() {
@@ -288,6 +281,23 @@ function renderSkeleton() {
   }).join('');
 }
 
+// inner HTML of an account's right-hand cell, in display mode
+function cellDisplayHtml(ei, ai) {
+  const ent = STATE.entities[ei];
+  const acct = ent.accounts[ai];
+  const xb = acct.balance;
+  const s = getStmt(ent.tenantId, acct.name);
+  const eff = s !== null ? s : xb;
+  const neg = eff < 0 ? ' negative' : '';
+  let html =
+    '<div class="account-balance' + neg + '" data-edit="1" title="Click to set statement balance">' + fmt(eff, acct.currency) + '</div>' +
+    '<div class="fig-lbl">' + (s !== null ? 'Statement balance' : 'Balance in Xero') + '</div>';
+  if (s !== null && Math.abs(s - xb) >= 0.005) {
+    html += '<div class="fig-xero">Xero ' + fmt(xb, acct.currency) + '</div>';
+  }
+  return html;
+}
+
 function renderDashboard() {
   const grid = document.getElementById('orgs-grid');
   let html = '';
@@ -297,19 +307,11 @@ function renderDashboard() {
       rows = '<div class="loading-row" style="color:#888780">No bank accounts found</div>';
     } else {
       ent.accounts.forEach(function (acct, ai) {
-        const negAmt = acct.balance < 0 ? ' negative' : '';
         rows +=
           '<div class="account-row">' +
             '<span class="account-name" title="' + escapeHtml(acct.name) + '">' + escapeHtml(acct.name) + '</span>' +
-            '<div class="acct-right">' +
-              '<div class="account-balance' + negAmt + '">' + fmt(acct.balance, acct.currency) + '</div>' +
-              '<div class="fig-lbl">Balance in Xero</div>' +
-              '<div class="stmt-wrap"><input class="stmt-input" inputmode="decimal" placeholder="enter" ' +
-                'data-ei="' + ei + '" data-ai="' + ai + '" ' +
-                'data-tenant="' + encodeURIComponent(ent.tenantId) + '" ' +
-                'data-account="' + encodeURIComponent(acct.name) + '"></div>' +
-              '<div class="fig-lbl">Statement balance</div>' +
-              '<div class="diff-line" id="diff_' + ei + '_' + ai + '"></div>' +
+            '<div class="acct-right" id="cell_' + ei + '_' + ai + '" data-ei="' + ei + '" data-ai="' + ai + '">' +
+              cellDisplayHtml(ei, ai) +
             '</div>' +
           '</div>';
       });
@@ -319,58 +321,73 @@ function renderDashboard() {
         '<div class="org-header">' +
           '<div class="org-name" title="' + escapeHtml(ent.displayName) + '">' + escapeHtml(ent.displayName) + '</div>' +
           '<div class="org-total" id="orgstmt_' + ei + '">&mdash;</div>' +
-          '<div class="org-sub">Statement balance \u00B7 <span id="orgxero_' + ei + '">&mdash;</span> in Xero</div>' +
+          '<div class="org-sub" id="orgsub_' + ei + '">Balance in Xero</div>' +
         '</div>' +
         '<div class="accounts-list">' + rows + '</div>' +
       '</div>';
   });
   grid.innerHTML = html;
-
-  // prefill inputs + attach listeners
-  const inputs = grid.querySelectorAll('.stmt-input');
-  inputs.forEach(function (el) {
-    const tenant = decodeURIComponent(el.getAttribute('data-tenant'));
-    const account = decodeURIComponent(el.getAttribute('data-account'));
-    const stored = getStmt(tenant, account);
-    if (stored !== null) el.value = stored;
-    el.addEventListener('input', function () {
-      setStmt(tenant, account, el.value);
-      recompute();
-    });
-  });
-
   recompute();
 }
 
+// click-to-edit on figures (event delegation)
+document.getElementById('orgs-grid').addEventListener('click', function (e) {
+  const fig = e.target.closest('.account-balance[data-edit]');
+  if (!fig) return;
+  const cell = fig.closest('.acct-right');
+  if (!cell || cell.querySelector('.stmt-edit')) return;
+  const ei = parseInt(cell.getAttribute('data-ei'), 10);
+  const ai = parseInt(cell.getAttribute('data-ai'), 10);
+  const ent = STATE.entities[ei];
+  const acct = ent.accounts[ai];
+  const current = getStmt(ent.tenantId, acct.name);
+
+  const input = document.createElement('input');
+  input.className = 'stmt-edit';
+  input.setAttribute('inputmode', 'decimal');
+  input.placeholder = String(acct.balance.toFixed(2));
+  if (current !== null) input.value = String(current);
+
+  cell.innerHTML = '';
+  const lbl = document.createElement('div');
+  lbl.className = 'fig-lbl';
+  lbl.textContent = 'Statement balance';
+  cell.appendChild(input);
+  cell.appendChild(lbl);
+  input.focus();
+  input.select();
+
+  function commit() {
+    setStmt(ent.tenantId, acct.name, input.value);
+    cell.innerHTML = cellDisplayHtml(ei, ai);
+    recompute();
+  }
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+    if (ev.key === 'Escape') { cell.innerHTML = cellDisplayHtml(ei, ai); }
+  });
+});
+
 function recompute() {
-  let grandX = 0, grandS = 0;
+  let grandS = 0;
   STATE.entities.forEach(function (ent, ei) {
-    let oX = 0, oS = 0;
-    ent.accounts.forEach(function (acct, ai) {
-      const xb = acct.balance;
+    let oS = 0, anyOverride = false;
+    ent.accounts.forEach(function (acct) {
       const s = getStmt(ent.tenantId, acct.name);
-      const eff = s !== null ? s : xb;
-      oX += xb; oS += eff; grandX += xb; grandS += eff;
-      const diffEl = document.getElementById('diff_' + ei + '_' + ai);
-      if (diffEl) {
-        if (s === null) { diffEl.textContent = ''; diffEl.className = 'diff-line'; }
-        else {
-          const d = s - xb;
-          if (Math.abs(d) < 0.005) { diffEl.textContent = 'Matches Xero'; diffEl.className = 'diff-line ok'; }
-          else { diffEl.textContent = 'Diff ' + fmt(d, acct.currency); diffEl.className = 'diff-line warn'; }
-        }
-      }
+      const eff = s !== null ? s : acct.balance;
+      oS += eff;
+      if (s !== null) anyOverride = true;
     });
+    grandS += oS;
     const osEl = document.getElementById('orgstmt_' + ei);
     if (osEl) { osEl.textContent = fmt(oS, 'GBP'); osEl.className = 'org-total' + (oS < 0 ? ' negative' : ''); }
-    const oxEl = document.getElementById('orgxero_' + ei);
-    if (oxEl) oxEl.textContent = fmt(oX, 'GBP');
+    const subEl = document.getElementById('orgsub_' + ei);
+    if (subEl) subEl.textContent = anyOverride ? 'Statement balance' : 'Balance in Xero';
   });
   const gt = document.getElementById('grand-total');
   gt.textContent = fmt(grandS, 'GBP');
   gt.className = 'amount' + (grandS < 0 ? ' negative' : '');
-  const gx = document.getElementById('grand-xero');
-  if (gx) gx.textContent = fmt(grandX, 'GBP');
 }
 
 async function loadBalances() {
@@ -397,7 +414,6 @@ async function loadBalances() {
       }
     }));
 
-    // order by ORG_NAMES, append any extras
     const byName = {};
     results.forEach(function (r) { byName[r.displayName] = r; });
     const ordered = [];
@@ -426,8 +442,7 @@ async function loadBalances() {
 }
 
 function signOut() {
-  // keep manual statement balances; only clear session auth
-  sessionStorage.clear();
+  sessionStorage.clear(); // keeps your typed statement balances
   window.location.href = REDIRECT_URI;
 }
 
