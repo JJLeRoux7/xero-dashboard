@@ -548,15 +548,14 @@ async function getBalanceSheet(accessToken, tenantId) {
 }
 
 async function getBankStatementBalances(accessToken, tenantId) {
-  // BankSummary: one call per entity, fast
+  // BankSummary: one call, returns Balance in Xero per account
   const res = await fetch('https://xero-proxy.jj-026.workers.dev/xero/Reports/BankSummary', {
     headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
   });
   if (!res.ok) throw new Error('BankSummary failed: ' + res.status);
   const data = await res.json();
-  const results = [];
   const report = data.Reports?.[0];
-  if (!report) return results;
+  if (!report) return [];
 
   function parseAmt(val) {
     if (!val && val !== 0) return 0;
@@ -566,6 +565,8 @@ async function getBankStatementBalances(accessToken, tenantId) {
     return neg ? -n : n;
   }
 
+  // Extract accounts and their IDs from BankSummary
+  const accountRows = [];
   for (const section of report.Rows || []) {
     const rows = section.RowType === 'Section' ? (section.Rows || []) : [section];
     for (const row of rows) {
@@ -573,27 +574,39 @@ async function getBankStatementBalances(accessToken, tenantId) {
         const cells = row.Cells || [];
         const name = cells[0]?.Value;
         if (!name) continue;
-        // col1 = closing balance (Balance in Xero)
-        // col4 = closing balance from bank feed perspective
-        const xeroBalance = parseAmt(cells[1]?.Value);
-        const opening = parseAmt(cells[1]?.Value);
-        const received = parseAmt(cells[2]?.Value);
-        const spent = parseAmt(cells[3]?.Value);
-        const closingXero = parseAmt(cells[4]?.Value) || (opening + received + spent);
-        // accountID for linking
-        const accountID = cells[0]?.Attributes?.find(a => a.Id === 'accountID')?.Value || 
-                          cells[1]?.Attributes?.find(a => a.Id === 'account')?.Value || '';
-        results.push({ 
-          name, 
-          currency: 'GBP', 
-          balance: closingXero,        // Balance in Xero (reconciled)
-          xeroBalance: closingXero,
-          accountID
-        });
+        const xeroBalance = parseAmt(cells[4]?.Value) || parseAmt(cells[1]?.Value);
+        // Get accountID from cell attributes
+        const accountID = cells[0]?.Attributes?.find(a => a.Id === 'accountID')?.Value || '';
+        accountRows.push({ name, currency: 'GBP', balance: xeroBalance, xeroBalance, accountID, unreconciledCount: null, unreconciledAmount: null });
       }
     }
   }
-  return results;
+
+  // Fetch unreconciled transactions per account IN PARALLEL
+  const promises = accountRows.map(async (acct) => {
+    if (!acct.accountID) return acct;
+    try {
+      const url = `https://xero-proxy.jj-026.workers.dev/xero/BankTransactions?BankAccount.AccountID=${acct.accountID}&IsReconciled=false&page=1`;
+      const res = await fetch(url, {
+        headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
+      });
+      if (!res.ok) return acct;
+      const data = await res.json();
+      const txs = data.BankTransactions || [];
+      // Sum unreconciled amounts
+      let unreconciledAmount = 0;
+      for (const tx of txs) {
+        const amt = tx.Total || tx.SubTotal || 0;
+        if (tx.Type === 'RECEIVE') unreconciledAmount += amt;
+        else unreconciledAmount -= amt;
+      }
+      acct.unreconciledCount = txs.length;
+      acct.unreconciledAmount = unreconciledAmount;
+    } catch(e) {}
+    return acct;
+  });
+
+  return Promise.all(promises);
 }
 
 const ORG_NAMES = [
@@ -630,12 +643,16 @@ function renderOrgCard(orgName, accounts, loading) {
   } else {
     for (const a of accounts) {
       const negAmt = a.balance < 0 ? ' negative' : '';
+      const diffHtml = (a.unreconciledAmount !== null && a.unreconciledAmount !== 0)
+        ? `<div style="font-size:11px;color:#888780;margin-top:3px;">Diff: ${fmt(a.unreconciledAmount, a.currency)} (${a.unreconciledCount} unreconciled)</div>`
+        : (a.unreconciledCount === 0 ? `<div style="font-size:11px;color:#63a522;margin-top:3px;">✓ Fully reconciled</div>` : '');
       accountsHtml += `
         <div class="account-row">
           <span class="account-name">${a.name}</span>
           <div style="text-align:right">
             <div class="account-balance${negAmt}">${fmt(a.balance, a.currency)}</div>
             <div style="font-size:11px;color:#888780;margin-top:2px;">Balance in Xero</div>
+            ${diffHtml}
           </div>
         </div>`;
     }
@@ -646,7 +663,7 @@ function renderOrgCard(orgName, accounts, loading) {
       <div class="org-header">
         <div class="org-name" title="${orgName}">${orgName}</div>
         <div class="org-total${negClass}">${loading ? '—' : fmt(total, accounts[0]?.currency || 'GBP')}</div>
-        ${loading ? '' : '<div style="font-size:11px;color:#888780;margin-top:2px;">Balance in Xero · Statement balance not available via API</div>'}
+        <div style="font-size:11px;color:#888780;margin-top:2px;">Balance in Xero</div>
       </div>
       <div class="accounts-list">${accountsHtml}</div>
     </div>`;
