@@ -74,10 +74,12 @@
 
   /* --- new: interco matrix table --- */
   .matrix-wrap { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 16px; overflow-x: auto; }
-  table.matrix { width: 100%; border-collapse: collapse; font-size: 13px; }
-  table.matrix th, table.matrix td { padding: 10px 14px; border-bottom: 0.5px solid #f0efe9; text-align: right; white-space: nowrap; }
-  table.matrix th:first-child, table.matrix td:first-child { text-align: left; }
-  table.matrix thead th { background: #f9f8f5; font-weight: 600; color: #5f5e5a; font-size: 12px; }
+  table.matrix { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+  table.matrix th, table.matrix td { padding: 8px 6px; border-bottom: 0.5px solid #f0efe9; text-align: right; }
+  table.matrix th, table.matrix td { white-space: normal; word-break: break-word; overflow: hidden; }
+  table.matrix tbody td { white-space: nowrap; }
+  table.matrix th:first-child, table.matrix td:first-child { text-align: left; width: 26%; }
+  table.matrix thead th { background: #f9f8f5; font-weight: 600; color: #5f5e5a; font-size: 11px; line-height: 1.3; }
   table.matrix tbody th { text-align: left; font-weight: 600; color: #1a1a18; }
   table.matrix td.diag { background: #f9f8f5; color: #c2c0b6; text-align: center; }
   table.matrix td.negative { color: #a32d2d; }
@@ -197,10 +199,18 @@ const ENTITY_CODES = {
 };
 const CODE_TO_NAME = Object.fromEntries(Object.entries(ENTITY_CODES).map(function (e) { return [e[1], e[0]]; }));
 const ENTITY_ORDER = ['7310', '7311', '7312', '7313', '7314', '7315'];
+const SHORT_NAMES = {
+  'Safe Space Talent Limited': 'Safe Space Talent',
+  'SST Stand & Deliver Holding Limited': 'SST S&D Holding',
+  'SST E4All Holding Limited': 'SST E4All Holding',
+  'Enterprise4All (North West) Limited': 'Enterprise4All',
+  'Stand & Deliver Limited': 'Stand & Deliver',
+  'Safe Space Talent Group Limited': 'SST Group'
+};
 const VARIANCE_TOLERANCE = 0.01;
 
 const STATE = { entities: [] };
-const INTERCO_STATE = { matrix: {}, variances: [], issues: [] };
+const INTERCO_STATE = { matrix: {}, variances: [], issues: [], connectedCodes: [] };
 let currentView = 'bank';
 
 document.getElementById('redirect-uri-display').textContent = REDIRECT_URI;
@@ -617,6 +627,8 @@ async function loadInterco() {
     INTERCO_STATE.matrix = matrix;
     INTERCO_STATE.variances = variances;
     INTERCO_STATE.issues = issues;
+    // keep only connected entities, in the standard order, for a compact table
+    INTERCO_STATE.connectedCodes = ENTITY_ORDER.filter(function (c) { return foundCodes.indexOf(c) !== -1; });
 
     renderIntercoTable();
 
@@ -641,18 +653,23 @@ function renderIntercoTable() {
   const table = document.getElementById('interco-table');
   const matrix = INTERCO_STATE.matrix;
   const variances = INTERCO_STATE.variances;
+  const codes = ENTITY_ORDER;
 
   function isVariance(a, b) {
     return variances.some(function (v) { return (v.a === a && v.b === b) || (v.a === b && v.b === a); });
   }
+  function shortName(code) {
+    const full = CODE_TO_NAME[code];
+    return SHORT_NAMES[full] || full;
+  }
 
   let html = '<thead><tr><th></th>';
-  ENTITY_ORDER.forEach(function (c) { html += '<th>' + escapeHtml(CODE_TO_NAME[c]) + '</th>'; });
+  codes.forEach(function (c) { html += '<th title="' + escapeHtml(CODE_TO_NAME[c]) + '">' + escapeHtml(shortName(c)) + '</th>'; });
   html += '</tr></thead><tbody>';
 
-  ENTITY_ORDER.forEach(function (rowCode) {
-    html += '<tr><th>' + escapeHtml(CODE_TO_NAME[rowCode]) + '</th>';
-    ENTITY_ORDER.forEach(function (colCode) {
+  codes.forEach(function (rowCode) {
+    html += '<tr><th title="' + escapeHtml(CODE_TO_NAME[rowCode]) + '">' + escapeHtml(shortName(rowCode)) + '</th>';
+    codes.forEach(function (colCode) {
       if (rowCode === colCode) { html += '<td class="diag">&mdash;</td>'; return; }
       const val = matrix[rowCode] ? matrix[rowCode][colCode] : undefined;
       if (val === undefined) { html += '<td class="missing">n/a</td>'; return; }
