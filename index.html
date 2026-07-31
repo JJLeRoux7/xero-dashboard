@@ -470,7 +470,11 @@ async function loadBalances() {
 
   try {
     const accessToken = await getValidAccessToken();
-    const tenants = await getTenants(accessToken);
+    const allTenants = await getTenants(accessToken);
+    // Bank Balances only ever shows the original 3 entities, even though more
+    // may be connected (for the Interco Matrix tab) — keeps this view fast
+    // and free of unrelated cards.
+    const tenants = allTenants.filter(function (t) { return ORG_NAMES.indexOf(matchOrg(t.tenantName)) !== -1; });
 
     const results = await Promise.all(tenants.map(async function (t) {
       try {
