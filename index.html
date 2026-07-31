@@ -27,6 +27,7 @@
   .error-banner { background: #fcebeb; border: 0.5px solid #f09595; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #a32d2d; margin-bottom: 1rem; display: none; }
 
   #dashboard-screen { display: none; }
+  #interco-screen { display: none; }
   .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
   .total-card { background: #1a1a18; color: #f5f4f0; border-radius: 16px; padding: 1.75rem 2rem; margin-bottom: 2rem; }
   .total-card .label { font-size: 12px; color: #888780; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.5rem; }
@@ -65,6 +66,24 @@
 
   #callback-screen { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 70vh; text-align: center; gap: 1rem; }
   #callback-screen p { font-size: 15px; color: #5f5e5a; }
+
+  /* --- new: view tabs --- */
+  #view-tabs { display: none; gap: 8px; margin-bottom: 1.25rem; }
+  .tab-btn { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer; color: #5f5e5a; }
+  .tab-btn.active { background: #1a1a18; color: #f5f4f0; border-color: #1a1a18; }
+
+  /* --- new: interco matrix table --- */
+  .matrix-wrap { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 16px; overflow-x: auto; }
+  table.matrix { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.matrix th, table.matrix td { padding: 10px 14px; border-bottom: 0.5px solid #f0efe9; text-align: right; white-space: nowrap; }
+  table.matrix th:first-child, table.matrix td:first-child { text-align: left; }
+  table.matrix thead th { background: #f9f8f5; font-weight: 600; color: #5f5e5a; font-size: 12px; }
+  table.matrix tbody th { text-align: left; font-weight: 600; color: #1a1a18; }
+  table.matrix td.diag { background: #f9f8f5; color: #c2c0b6; text-align: center; }
+  table.matrix td.negative { color: #a32d2d; }
+  table.matrix td.variance { background: #fcebeb; color: #a32d2d; font-weight: 700; }
+  table.matrix td.missing { color: #c2c0b6; font-style: italic; font-weight: 400; }
+  .interco-issues { font-size: 12px; color: #a32d2d; margin-top: 12px; line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -102,6 +121,11 @@
     <p id="callback-msg">Connecting to Xero&hellip;</p>
   </div>
 
+  <div id="view-tabs">
+    <button class="tab-btn active" id="tab-bank" onclick="showView('bank')">Bank Balances</button>
+    <button class="tab-btn" id="tab-interco" onclick="showView('interco')">Interco Matrix</button>
+  </div>
+
   <div id="dashboard-screen">
     <div class="top-bar">
       <div style="font-size:12px;color:#888780;">
@@ -124,6 +148,31 @@
     <div class="orgs-grid" id="orgs-grid"></div>
   </div>
 
+  <div id="interco-screen">
+    <div class="top-bar">
+      <div style="font-size:12px;color:#888780;">
+        <span class="status-dot" id="interco-status-dot"></span>
+        <span id="interco-status-text">Live data</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn-refresh" onclick="loadInterco()"><span style="font-size:16px;">&#8635;</span> Refresh</button>
+        <button class="btn-signout" onclick="signOut()">Sign out</button>
+      </div>
+    </div>
+
+    <div class="total-card">
+      <div class="label">Intercompany position</div>
+      <div class="amount" id="interco-summary">&mdash;</div>
+      <div class="sub" id="interco-sub">Loading&hellip;</div>
+      <div class="hint">Rows are each entity's own books &middot; a red cell means that pair doesn't net to zero</div>
+    </div>
+
+    <div class="matrix-wrap">
+      <table class="matrix" id="interco-table"></table>
+    </div>
+    <div class="interco-issues" id="interco-issues"></div>
+  </div>
+
 </div>
 
 <script>
@@ -137,7 +186,22 @@ const ORG_NAMES = [
   'Safe Space Talent Limited'
 ];
 
+// --- new: intercompany control-account codes, keyed by the entity they identify ---
+const ENTITY_CODES = {
+  'Safe Space Talent Limited': '7310',
+  'SST Stand & Deliver Holding Limited': '7311',
+  'SST E4All Holding Limited': '7312',
+  'Enterprise4All (North West) Limited': '7313',
+  'Stand & Deliver Limited': '7314',
+  'Safe Space Talent Group Limited': '7315'
+};
+const CODE_TO_NAME = Object.fromEntries(Object.entries(ENTITY_CODES).map(function (e) { return [e[1], e[0]]; }));
+const ENTITY_ORDER = ['7310', '7311', '7312', '7313', '7314', '7315'];
+const VARIANCE_TOLERANCE = 0.01;
+
 const STATE = { entities: [] };
+const INTERCO_STATE = { matrix: {}, variances: [], issues: [] };
+let currentView = 'bank';
 
 document.getElementById('redirect-uri-display').textContent = REDIRECT_URI;
 
@@ -189,7 +253,8 @@ function startAuth() {
     response_type: 'code',
     client_id: clientId,
     redirect_uri: REDIRECT_URI,
-    scope: 'openid profile email accounting.settings.read accounting.reports.banksummary.read offline_access',
+    // added accounting.reports.trialbalance.read for the interco matrix
+    scope: 'openid profile email accounting.settings.read accounting.reports.banksummary.read accounting.reports.trialbalance.read offline_access',
     state
   });
   window.location.href = 'https://login.xero.com/identity/connect/authorize?' + params;
@@ -261,17 +326,25 @@ function matchOrg(tenantName) {
   const aliases = {
     'enterprise4all': 'Enterprise4All (North West) Limited',
     'enterprise 4 all': 'Enterprise4All (North West) Limited',
+    'stand & deliver holding': 'SST Stand & Deliver Holding Limited',
+    'stand and deliver holding': 'SST Stand & Deliver Holding Limited',
+    'e4all holding': 'SST E4All Holding Limited',
+    'e4a holding': 'SST E4All Holding Limited',
     'stand & deliver': 'Stand & Deliver Limited',
     'stand and deliver': 'Stand & Deliver Limited',
+    'safe space talent group': 'Safe Space Talent Group Limited',
     'safe space talent': 'Safe Space Talent Limited',
     'safe space': 'Safe Space Talent Limited'
   };
   const key = (tenantName || '').toLowerCase();
-  for (const a in aliases) { if (key.indexOf(a) !== -1) return aliases[a]; }
+  // check longer/more specific alias phrases first so "safe space talent group" doesn't
+  // get matched by the shorter "safe space talent" alias
+  const keys = Object.keys(aliases).sort(function (a, b) { return b.length - a.length; });
+  for (const a of keys) { if (key.indexOf(a) !== -1) return aliases[a]; }
   return tenantName;
 }
 
-/* ----- rendering ----- */
+/* ----- rendering (bank balances) ----- */
 function renderSkeleton() {
   const grid = document.getElementById('orgs-grid');
   grid.innerHTML = ORG_NAMES.map(function (n) {
@@ -281,7 +354,6 @@ function renderSkeleton() {
   }).join('');
 }
 
-// inner HTML of an account's right-hand cell, in display mode
 function cellDisplayHtml(ei, ai) {
   const ent = STATE.entities[ei];
   const acct = ent.accounts[ai];
@@ -330,7 +402,6 @@ function renderDashboard() {
   recompute();
 }
 
-// click-to-edit on figures (event delegation)
 document.getElementById('orgs-grid').addEventListener('click', function (e) {
   const fig = e.target.closest('.account-balance[data-edit]');
   if (!fig) return;
@@ -391,10 +462,6 @@ function recompute() {
 }
 
 async function loadBalances() {
-  document.getElementById('dashboard-screen').style.display = 'block';
-  document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('callback-screen').style.display = 'none';
-
   const statusDot = document.getElementById('status-dot');
   const statusText = document.getElementById('status-text');
   renderSkeleton();
@@ -441,6 +508,171 @@ async function loadBalances() {
   }
 }
 
+/* ================= NEW: INTERCO MATRIX ================= */
+
+async function getAccountCodeMap(accessToken, tenantId) {
+  const res = await fetch(WORKER + '/xero/Accounts', {
+    headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
+  });
+  if (!res.ok) throw new Error('Accounts failed: ' + res.status);
+  const data = await res.json();
+  const map = {};
+  (data.Accounts || []).forEach(function (a) { map[a.AccountID] = a.Code; });
+  return map;
+}
+
+function flattenTBRows(rows, out) {
+  out = out || [];
+  (rows || []).forEach(function (row) {
+    if (row.RowType === 'Row' || row.RowType === 'SummaryRow') out.push(row);
+    if (row.Rows) flattenTBRows(row.Rows, out);
+  });
+  return out;
+}
+
+async function getTrialBalanceByCode(accessToken, tenantId, codeMap) {
+  const res = await fetch(WORKER + '/xero/Reports/TrialBalance', {
+    headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
+  });
+  if (!res.ok) throw new Error('TrialBalance failed: ' + res.status);
+  const data = await res.json();
+  const report = data.Reports && data.Reports[0];
+  if (!report) return {};
+  const flat = flattenTBRows(report.Rows);
+  const byCode = {};
+  flat.forEach(function (row) {
+    const cells = row.Cells || [];
+    if (cells.length < 3) return;
+    const attrs = (cells[0].Attributes || []);
+    const accountAttr = attrs.find(function (a) { return a.Id === 'account'; });
+    if (!accountAttr) return;
+    const code = codeMap[accountAttr.Value];
+    if (!code) return;
+    const debit = parseAmt(cells[1] && cells[1].Value);
+    const credit = parseAmt(cells[2] && cells[2].Value);
+    byCode[code] = debit - credit;
+  });
+  return byCode;
+}
+
+async function loadInterco() {
+  const statusDot = document.getElementById('interco-status-dot');
+  const statusText = document.getElementById('interco-status-text');
+  const table = document.getElementById('interco-table');
+  const issuesEl = document.getElementById('interco-issues');
+  document.getElementById('interco-summary').textContent = '\u2014';
+  document.getElementById('interco-sub').textContent = 'Loading\u2026';
+  table.innerHTML = '<tr><td style="padding:1rem 1.5rem;color:#888780;">Fetching trial balances\u2026</td></tr>';
+  issuesEl.innerHTML = '';
+
+  try {
+    const accessToken = await getValidAccessToken();
+    const tenants = await getTenants(accessToken);
+
+    const matrix = {};
+    const issues = [];
+    const foundCodes = [];
+
+    await Promise.all(tenants.map(async function (t) {
+      const displayName = matchOrg(t.tenantName);
+      const ownCode = ENTITY_CODES[displayName];
+      if (!ownCode) return; // not one of the 6 interco entities — skip
+      foundCodes.push(ownCode);
+      try {
+        const codeMap = await getAccountCodeMap(accessToken, t.tenantId);
+        const byCode = await getTrialBalanceByCode(accessToken, t.tenantId, codeMap);
+        matrix[ownCode] = {};
+        ENTITY_ORDER.forEach(function (c) {
+          if (c === ownCode) return;
+          if (byCode[c] !== undefined) matrix[ownCode][c] = byCode[c];
+        });
+      } catch (e) {
+        issues.push(displayName + ': ' + e.message);
+      }
+    }));
+
+    const missing = ENTITY_ORDER.filter(function (c) { return foundCodes.indexOf(c) === -1; });
+    missing.forEach(function (c) {
+      issues.push(CODE_TO_NAME[c] + ' is not connected to this Xero app yet — its row/column will show as missing.');
+    });
+
+    // pairwise variance check
+    const variances = [];
+    ENTITY_ORDER.forEach(function (a) {
+      ENTITY_ORDER.forEach(function (b) {
+        if (a === b) return;
+        const aToB = matrix[a] && matrix[a][b];
+        const bToA = matrix[b] && matrix[b][a];
+        if (aToB === undefined || bToA === undefined) return;
+        if (Math.abs(aToB + bToA) > VARIANCE_TOLERANCE) {
+          variances.push({ a: a, b: b, aToB: aToB, bToA: bToA, diff: aToB + bToA });
+        }
+      });
+    });
+
+    INTERCO_STATE.matrix = matrix;
+    INTERCO_STATE.variances = variances;
+    INTERCO_STATE.issues = issues;
+
+    renderIntercoTable();
+
+    document.getElementById('interco-summary').textContent = variances.length === 0
+      ? 'All pairs net to zero'
+      : variances.length + ' pair(s) out of balance';
+    document.getElementById('interco-sub').textContent =
+      'As at today \u00B7 ' + foundCodes.length + ' of 6 entities connected';
+
+    statusDot.className = 'status-dot' + (variances.length ? ' error' : '');
+    statusText.textContent = variances.length ? 'Breaks found' : 'Live data';
+
+    issuesEl.innerHTML = issues.length ? ('Issues: ' + issues.map(escapeHtml).join(' &middot; ')) : '';
+  } catch (e) {
+    statusDot.className = 'status-dot error';
+    statusText.textContent = 'Error loading data';
+    document.getElementById('interco-sub').textContent = e.message;
+  }
+}
+
+function renderIntercoTable() {
+  const table = document.getElementById('interco-table');
+  const matrix = INTERCO_STATE.matrix;
+  const variances = INTERCO_STATE.variances;
+
+  function isVariance(a, b) {
+    return variances.some(function (v) { return (v.a === a && v.b === b) || (v.a === b && v.b === a); });
+  }
+
+  let html = '<thead><tr><th></th>';
+  ENTITY_ORDER.forEach(function (c) { html += '<th>' + escapeHtml(CODE_TO_NAME[c]) + '</th>'; });
+  html += '</tr></thead><tbody>';
+
+  ENTITY_ORDER.forEach(function (rowCode) {
+    html += '<tr><th>' + escapeHtml(CODE_TO_NAME[rowCode]) + '</th>';
+    ENTITY_ORDER.forEach(function (colCode) {
+      if (rowCode === colCode) { html += '<td class="diag">&mdash;</td>'; return; }
+      const val = matrix[rowCode] ? matrix[rowCode][colCode] : undefined;
+      if (val === undefined) { html += '<td class="missing">n/a</td>'; return; }
+      const cls = (isVariance(rowCode, colCode) ? 'variance' : (val < 0 ? 'negative' : ''));
+      html += '<td class="' + cls + '">' + fmt(val, 'GBP') + '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+/* ================= view switching ================= */
+function showView(view) {
+  currentView = view;
+  document.getElementById('dashboard-screen').style.display = view === 'bank' ? 'block' : 'none';
+  document.getElementById('interco-screen').style.display = view === 'interco' ? 'block' : 'none';
+  document.getElementById('tab-bank').className = 'tab-btn' + (view === 'bank' ? ' active' : '');
+  document.getElementById('tab-interco').className = 'tab-btn' + (view === 'interco' ? ' active' : '');
+  if (view === 'interco' && Object.keys(INTERCO_STATE.matrix).length === 0) {
+    loadInterco();
+  }
+}
+
 function signOut() {
   sessionStorage.clear(); // keeps your typed statement balances
   window.location.href = REDIRECT_URI;
@@ -461,17 +693,27 @@ async function handleCallback() {
     saveTokens(tokens);
     window.history.replaceState({}, '', REDIRECT_URI);
     document.getElementById('callback-msg').textContent = 'Loading your balances\u2026';
-    await loadBalances();
+    await enterDashboard();
   } catch (e) {
     document.getElementById('callback-msg').textContent = 'Error: ' + e.message;
   }
   return true;
 }
 
+async function enterDashboard() {
+  document.getElementById('dashboard-screen').style.display = 'block';
+  document.getElementById('interco-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('callback-screen').style.display = 'none';
+  document.getElementById('view-tabs').style.display = 'flex';
+  showView('bank');
+  await loadBalances();
+}
+
 async function init() {
   const isCallback = await handleCallback();
   if (isCallback) return;
-  if (getTokens()) { await loadBalances(); }
+  if (getTokens()) { await enterDashboard(); }
   else { document.getElementById('auth-screen').style.display = 'flex'; }
 }
 
