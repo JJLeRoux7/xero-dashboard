@@ -848,8 +848,12 @@ async function getBalanceSheetDebtLines(accessToken, tenantId) {
     if (section.RowType !== 'Section') return;
     const title = (section.Title || '').toLowerCase();
     let bucket = null;
-    if (title.indexOf('falling due within one year') !== -1) bucket = 'short';
-    else if (title.indexOf('falling due after more than one year') !== -1) bucket = 'long';
+    // check "non-current" first — "non-current liabilities" also contains the
+    // substring "current liabilities", so order matters here. Both the live
+    // API wording (Current Liabilities / Non-current Liabilities) and the
+    // statutory PDF wording (falling due within/after one year) are covered.
+    if (title.indexOf('non-current liabilities') !== -1 || title.indexOf('falling due after more than one year') !== -1) bucket = 'long';
+    else if (title.indexOf('current liabilities') !== -1 || title.indexOf('falling due within one year') !== -1) bucket = 'short';
     if (!bucket) return;
 
     (section.Rows || []).forEach(function (row) {
