@@ -86,6 +86,17 @@
   table.matrix td.variance { background: #fcebeb; color: #a32d2d; font-weight: 700; }
   table.matrix td.missing { color: #c2c0b6; font-style: italic; font-weight: 400; }
   .interco-issues { font-size: 12px; color: #a32d2d; margin-top: 12px; line-height: 1.6; }
+
+  /* --- new: pair reconciliation summary --- */
+  .pairs-section { margin-top: 1.5rem; }
+  .pairs-heading { font-size: 13px; font-weight: 600; color: #1a1a18; margin-bottom: 0.75rem; }
+  table.pairs-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.pairs-table th, table.pairs-table td { padding: 10px 14px; border-bottom: 0.5px solid #f0efe9; text-align: left; }
+  table.pairs-table thead th { background: #f9f8f5; font-weight: 600; color: #5f5e5a; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+  table.pairs-table td.amt { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.pairs-table td.status-ok { color: #4c8a2e; font-weight: 600; white-space: nowrap; }
+  table.pairs-table td.status-bad { color: #a32d2d; font-weight: 600; white-space: nowrap; }
+  table.pairs-table tr:last-child td { border-bottom: none; }
 </style>
 </head>
 <body>
@@ -173,6 +184,13 @@
       <table class="matrix" id="interco-table"></table>
     </div>
     <div class="interco-issues" id="interco-issues"></div>
+
+    <div class="pairs-section">
+      <div class="pairs-heading">Pair reconciliation</div>
+      <div class="matrix-wrap">
+        <table class="pairs-table" id="pairs-table"></table>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -633,6 +651,7 @@ async function loadInterco() {
     INTERCO_STATE.connectedCodes = ENTITY_ORDER.filter(function (c) { return foundCodes.indexOf(c) !== -1; });
 
     renderIntercoTable();
+    renderPairsTable();
 
     document.getElementById('interco-summary').textContent = variances.length === 0
       ? 'All pairs net to zero'
@@ -682,6 +701,52 @@ function renderIntercoTable() {
   });
   html += '</tbody>';
   table.innerHTML = html;
+}
+
+function renderPairsTable() {
+  const table = document.getElementById('pairs-table');
+  const matrix = INTERCO_STATE.matrix;
+  const codes = ENTITY_ORDER;
+  function shortName(code) {
+    const full = CODE_TO_NAME[code];
+    return SHORT_NAMES[full] || full;
+  }
+
+  let html = '<thead><tr><th>Pair</th><th class="amt">A\'s books</th><th class="amt">B\'s books</th><th>Status</th></tr></thead><tbody>';
+  let rowsHtml = '';
+
+  for (let i = 0; i < codes.length; i++) {
+    for (let j = i + 1; j < codes.length; j++) {
+      const a = codes[i], b = codes[j];
+      const aToB = matrix[a] ? matrix[a][b] : undefined;
+      const bToA = matrix[b] ? matrix[b][a] : undefined;
+      if (aToB === undefined && bToA === undefined) continue; // neither side connected/has data — skip entirely
+
+      const pairLabel = escapeHtml(shortName(a)) + ' &harr; ' + escapeHtml(shortName(b));
+      const aCell = aToB === undefined ? '<span style="color:#c2c0b6;font-style:italic;">n/a</span>' : fmt(aToB, 'GBP');
+      const bCell = bToA === undefined ? '<span style="color:#c2c0b6;font-style:italic;">n/a</span>' : fmt(bToA, 'GBP');
+
+      let statusHtml;
+      if (aToB === undefined || bToA === undefined) {
+        statusHtml = '<td class="status-bad">&#9888; One side missing</td>';
+      } else {
+        const diff = aToB + bToA;
+        if (Math.abs(diff) <= VARIANCE_TOLERANCE) {
+          statusHtml = '<td class="status-ok">&#10003; Matches</td>';
+        } else {
+          statusHtml = '<td class="status-bad">&#9888; Off by ' + fmt(Math.abs(diff), 'GBP') + '</td>';
+        }
+      }
+
+      rowsHtml += '<tr><td>' + pairLabel + '</td><td class="amt">' + aCell + '</td><td class="amt">' + bCell + '</td>' + statusHtml + '</tr>';
+    }
+  }
+
+  if (!rowsHtml) {
+    rowsHtml = '<tr><td colspan="4" style="color:#888780;">No pairs with data yet.</td></tr>';
+  }
+
+  table.innerHTML = html + rowsHtml + '</tbody>';
 }
 
 /* ================= view switching ================= */
