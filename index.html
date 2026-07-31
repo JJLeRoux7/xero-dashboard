@@ -556,14 +556,16 @@ async function getTrialBalanceByCode(accessToken, tenantId, codeMap) {
   const byCode = {};
   flat.forEach(function (row) {
     const cells = row.Cells || [];
-    if (cells.length < 3) return;
+    if (cells.length < 5) return;
     const attrs = (cells[0].Attributes || []);
     const accountAttr = attrs.find(function (a) { return a.Id === 'account'; });
     if (!accountAttr) return;
     const code = codeMap[accountAttr.Value];
     if (!code) return;
-    const debit = parseAmt(cells[1] && cells[1].Value);
-    const credit = parseAmt(cells[2] && cells[2].Value);
+    // cells: [0]=Account [1]=Debit [2]=Credit [3]=YTD Debit [4]=YTD Credit
+    // the matrix needs the running YTD balance, not the current-period movement
+    const debit = parseAmt(cells[3] && cells[3].Value);
+    const credit = parseAmt(cells[4] && cells[4].Value);
     byCode[code] = debit - credit;
   });
   return byCode;
