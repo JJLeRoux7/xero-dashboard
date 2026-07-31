@@ -860,7 +860,10 @@ async function getBalanceSheetDebtLines(accessToken, tenantId) {
       if (row.RowType !== 'Row') return;
       const cells = row.Cells || [];
       const name = cells[0] && cells[0].Value || '';
-      const value = parseAmt(cells[cells.length - 1] && cells[cells.length - 1].Value);
+      // cells[0] = account name, cells[1] = current period balance,
+      // cells[2] (if present) = prior-year comparative — always use [1],
+      // never "last cell", since a comparative column changes that.
+      const value = parseAmt(cells[1] && cells[1].Value);
       const n = name.toLowerCase();
       if (DEBT_EXCLUDE.some(function (x) { return n.indexOf(x) !== -1; })) return;
       if (!DEBT_KEYWORDS.some(function (k) { return n.indexOf(k) !== -1; })) return;
