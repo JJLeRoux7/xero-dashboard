@@ -357,8 +357,8 @@ function setStmt(tenantId, name, raw) {
 
 /* ----- credentials & tokens ----- */
 function showError(msg) { const el = document.getElementById('error-msg'); el.textContent = msg; el.style.display = 'block'; }
-function saveCredentials(id, secret) { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ clientId: id, clientSecret: secret })); }
-function getCredentials() { try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY)); } catch { return null; } }
+function saveCredentials(id, secret) { localStorage.setItem(STORAGE_KEY, JSON.stringify({ clientId: id, clientSecret: secret })); }
+function getCredentials() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { return null; } }
 
 function startAuth() {
   const clientId = document.getElementById('client-id').value.trim();
@@ -402,8 +402,8 @@ async function refreshToken(refreshTok) {
   if (!res.ok) throw new Error('Token refresh failed');
   return res.json();
 }
-function saveTokens(tokens) { const expiry = Date.now() + tokens.expires_in * 1000; sessionStorage.setItem('xero_tokens', JSON.stringify({ ...tokens, expiry })); }
-function getTokens() { try { return JSON.parse(sessionStorage.getItem('xero_tokens')); } catch { return null; } }
+function saveTokens(tokens) { const expiry = Date.now() + tokens.expires_in * 1000; localStorage.setItem('xero_tokens', JSON.stringify({ ...tokens, expiry })); }
+function getTokens() { try { return JSON.parse(localStorage.getItem('xero_tokens')); } catch { return null; } }
 async function getValidAccessToken() {
   let tokens = getTokens();
   if (!tokens) throw new Error('Not authenticated');
@@ -1075,7 +1075,9 @@ function showView(view) {
 }
 
 function signOut() {
-  sessionStorage.clear(); // keeps your typed statement balances
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem('xero_tokens');
+  sessionStorage.clear();
   window.location.href = REDIRECT_URI;
 }
 
