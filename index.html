@@ -185,6 +185,26 @@
   </div>
 
   <div id="interco-screen">
+    <div id="interco-auth" style="display:none;">
+      <div class="auth-card" style="margin: 0 auto 1.5rem;">
+        <h2>Connect Interco Xero App</h2>
+        <p>The Interco Matrix needs its own separate Xero app connection (5 entities), kept apart from the Bank Balances / Debt Facilities connection so the two don't compete for the same 5-connection limit.</p>
+        <div id="interco-error-msg" class="error-banner"></div>
+        <div class="field-group">
+          <label>Client ID</label>
+          <input type="text" id="interco-client-id" placeholder="Paste your Interco app's Client ID" autocomplete="off" />
+        </div>
+        <div class="field-group">
+          <label>Client Secret</label>
+          <input type="password" id="interco-client-secret" placeholder="Paste your Interco app's Client Secret" autocomplete="off" />
+        </div>
+        <button class="btn-connect" onclick="startAuth('interco')">Connect Interco App &rarr;</button>
+        <span class="help-link">
+          This must be a <strong>different</strong> Xero app than the one used for Bank/Debt — <a href="https://developer.xero.com/app/manage" target="_blank">create a second free Xero app</a> if you haven't already, using the same redirect URI as before.<br>
+          Redirect URI: <strong id="interco-redirect-uri-display"></strong>
+        </span>
+      </div>
+    </div>
     <div class="top-bar">
       <div style="font-size:12px;color:#888780;">
         <span class="status-dot" id="interco-status-dot"></span>
@@ -254,6 +274,7 @@
 const WORKER = 'https://xero-proxy.jj-026.workers.dev';
 const REDIRECT_URI = window.location.origin + window.location.pathname;
 const STORAGE_KEY = 'xero_dash_creds';
+const STORAGE_KEY_INTERCO = 'xero_dash_creds_interco';
 
 const ORG_NAMES = [
   'Enterprise4All (North West) Limited',
@@ -318,6 +339,7 @@ const DEBT_STATE = { entities: [], limits: {} };
 let currentView = 'bank';
 
 document.getElementById('redirect-uri-display').textContent = REDIRECT_URI;
+document.getElementById('interco-redirect-uri-display').textContent = REDIRECT_URI;
 
 function fmt(amount, currency) {
   const sym = currency === 'GBP' ? '\u00A3' : currency === 'USD' ? '$' : currency === 'EUR' ? '\u20AC' : (currency + ' ');
@@ -357,29 +379,49 @@ function setStmt(tenantId, name, raw) {
 
 /* ----- credentials & tokens ----- */
 function showError(msg) { const el = document.getElementById('error-msg'); el.textContent = msg; el.style.display = 'block'; }
-function saveCredentials(id, secret) { localStorage.setItem(STORAGE_KEY, JSON.stringify({ clientId: id, clientSecret: secret })); }
-function getCredentials() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { return null; } }
+function credsKey(flow) { return flow === 'interco' ? STORAGE_KEY_INTERCO : STORAGE_KEY; }
+function tokensKey(flow) { return flow === 'interco' ? 'xero_tokens_interco' : 'xero_tokens'; }
+function saveCredentials(flow, id, secret) { localStorage.setItem(credsKey(flow), JSON.stringify({ clientId: id, clientSecret: secret })); }
+function getCredentials(flow) { try { return JSON.parse(localStorage.getItem(credsKey(flow))); } catch { return null; } }
 
-function startAuth() {
-  const clientId = document.getElementById('client-id').value.trim();
-  const clientSecret = document.getElementById('client-secret').value.trim();
-  if (!clientId || !clientSecret) { showError('Please enter both your Client ID and Client Secret.'); return; }
-  saveCredentials(clientId, clientSecret);
+function startAuth(flow) {
+  flow = flow || 'bank';
+  const idInput = document.getElementById(flow === 'interco' ? 'interco-client-id' : 'client-id');
+  const secretInput = document.getElementById(flow === 'interco' ? 'interco-client-secret' : 'client-secret');
+  const clientId = idInput.value.trim();
+  const clientSecret = secretInput.value.trim();
+  if (!clientId || !clientSecret) {
+    if (flow === 'interco') {
+      const el = document.getElementById('interco-error-msg');
+      el.textContent = 'Please enter both your Client ID and Client Secret.';
+      el.style.display = 'block';
+    } else {
+      showError('Please enter both your Client ID and Client Secret.');
+    }
+    return;
+  }
+  saveCredentials(flow, clientId, clientSecret);
   const state = Math.random().toString(36).slice(2);
   sessionStorage.setItem('xero_state', state);
+  sessionStorage.setItem('xero_pending_flow', flow);
+  // Each app only requests the scopes it actually needs — the Interco app
+  // never touches BankSummary or BalanceSheet, the Bank/Debt app never
+  // touches TrialBalance or the chart of accounts.
+  const scope = flow === 'interco'
+    ? 'openid profile email accounting.settings.read accounting.reports.trialbalance.read offline_access'
+    : 'openid profile email accounting.settings.read accounting.reports.banksummary.read accounting.reports.balancesheet.read offline_access';
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: clientId,
     redirect_uri: REDIRECT_URI,
-    // added accounting.reports.balancesheet.read for the Debt Facilities tab
-    scope: 'openid profile email accounting.settings.read accounting.reports.banksummary.read accounting.reports.trialbalance.read accounting.reports.balancesheet.read offline_access',
+    scope: scope,
     state
   });
   window.location.href = 'https://login.xero.com/identity/connect/authorize?' + params;
 }
 
-async function exchangeCode(code) {
-  const creds = getCredentials();
+async function exchangeCode(flow, code) {
+  const creds = getCredentials(flow);
   if (!creds) throw new Error('Credentials not found. Please reconnect.');
   const basicAuth = btoa(creds.clientId + ':' + creds.clientSecret);
   const res = await fetch(WORKER + '/token', {
@@ -390,8 +432,8 @@ async function exchangeCode(code) {
   if (!res.ok) throw new Error('Token exchange failed: ' + (await res.text()));
   return res.json();
 }
-async function refreshToken(refreshTok) {
-  const creds = getCredentials();
+async function refreshToken(flow, refreshTok) {
+  const creds = getCredentials(flow);
   if (!creds) throw new Error('No credentials stored.');
   const basicAuth = btoa(creds.clientId + ':' + creds.clientSecret);
   const res = await fetch(WORKER + '/token', {
@@ -402,12 +444,13 @@ async function refreshToken(refreshTok) {
   if (!res.ok) throw new Error('Token refresh failed');
   return res.json();
 }
-function saveTokens(tokens) { const expiry = Date.now() + tokens.expires_in * 1000; localStorage.setItem('xero_tokens', JSON.stringify({ ...tokens, expiry })); }
-function getTokens() { try { return JSON.parse(localStorage.getItem('xero_tokens')); } catch { return null; } }
-async function getValidAccessToken() {
-  let tokens = getTokens();
+function saveTokens(flow, tokens) { const expiry = Date.now() + tokens.expires_in * 1000; localStorage.setItem(tokensKey(flow), JSON.stringify({ ...tokens, expiry })); }
+function getTokens(flow) { try { return JSON.parse(localStorage.getItem(tokensKey(flow))); } catch { return null; } }
+async function getValidAccessToken(flow) {
+  flow = flow || 'bank';
+  let tokens = getTokens(flow);
   if (!tokens) throw new Error('Not authenticated');
-  if (Date.now() > tokens.expiry - 60000) { const r = await refreshToken(tokens.refresh_token); saveTokens(r); tokens = r; }
+  if (Date.now() > tokens.expiry - 60000) { const r = await refreshToken(flow, tokens.refresh_token); saveTokens(flow, r); tokens = r; }
   return tokens.access_token;
 }
 async function getTenants(accessToken) {
@@ -587,7 +630,7 @@ async function loadBalances() {
   document.getElementById('entity-count').textContent = 'Loading all entities\u2026';
 
   try {
-    const accessToken = await getValidAccessToken();
+    const accessToken = await getValidAccessToken('bank');
     const allTenants = await getTenants(accessToken);
     const tenants = allTenants.filter(function (t) { return ORG_NAMES.indexOf(matchOrg(t.tenantName)) !== -1; });
 
@@ -684,8 +727,17 @@ async function loadInterco() {
   table.innerHTML = '<tr><td style="padding:1rem 1.5rem;color:#888780;">Fetching trial balances\u2026</td></tr>';
   issuesEl.innerHTML = '';
 
+  if (!getTokens('interco')) {
+    document.getElementById('interco-auth').style.display = 'block';
+    document.getElementById('interco-summary').textContent = '\u2014';
+    document.getElementById('interco-sub').textContent = 'Not connected yet';
+    table.innerHTML = '';
+    return;
+  }
+  document.getElementById('interco-auth').style.display = 'none';
+
   try {
-    const accessToken = await getValidAccessToken();
+    const accessToken = await getValidAccessToken('interco');
     const tenants = await getTenants(accessToken);
 
     const matrix = {};
@@ -1009,7 +1061,7 @@ async function loadDebt() {
   issuesEl.innerHTML = '';
 
   try {
-    const accessToken = await getValidAccessToken();
+    const accessToken = await getValidAccessToken('bank');
     const allTenants = await getTenants(accessToken);
     const tenants = allTenants.filter(function (t) { return ORG_NAMES.indexOf(matchOrg(t.tenantName)) !== -1; });
 
@@ -1076,7 +1128,9 @@ function showView(view) {
 
 function signOut() {
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(STORAGE_KEY_INTERCO);
   localStorage.removeItem('xero_tokens');
+  localStorage.removeItem('xero_tokens_interco');
   sessionStorage.clear();
   window.location.href = REDIRECT_URI;
 }
@@ -1086,17 +1140,31 @@ async function handleCallback() {
   const code = params.get('code');
   const state = params.get('state');
   const savedState = sessionStorage.getItem('xero_state');
+  const flow = sessionStorage.getItem('xero_pending_flow') || 'bank';
   if (!code) return false;
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('callback-screen').style.display = 'flex';
   if (state !== savedState) { document.getElementById('callback-msg').textContent = 'Security error: state mismatch. Please try again.'; return true; }
   try {
     document.getElementById('callback-msg').textContent = 'Exchanging token with Xero\u2026';
-    const tokens = await exchangeCode(code);
-    saveTokens(tokens);
+    const tokens = await exchangeCode(flow, code);
+    saveTokens(flow, tokens);
     window.history.replaceState({}, '', REDIRECT_URI);
-    document.getElementById('callback-msg').textContent = 'Loading your balances\u2026';
-    await enterDashboard();
+    if (flow === 'interco') {
+      document.getElementById('callback-msg').textContent = 'Loading intercompany data\u2026';
+      if (getTokens('bank')) {
+        await enterDashboard();
+        showView('interco');
+      } else {
+        // Interco was connected before Bank/Debt ever was — land on the
+        // Bank/Debt connect screen next, since that flow is still needed too.
+        document.getElementById('callback-screen').style.display = 'none';
+        document.getElementById('auth-screen').style.display = 'flex';
+      }
+    } else {
+      document.getElementById('callback-msg').textContent = 'Loading your balances\u2026';
+      await enterDashboard();
+    }
   } catch (e) {
     document.getElementById('callback-msg').textContent = 'Error: ' + e.message;
   }
@@ -1117,7 +1185,7 @@ async function enterDashboard() {
 async function init() {
   const isCallback = await handleCallback();
   if (isCallback) return;
-  if (getTokens()) { await enterDashboard(); }
+  if (getTokens('bank')) { await enterDashboard(); }
   else { document.getElementById('auth-screen').style.display = 'flex'; }
 }
 
