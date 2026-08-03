@@ -740,7 +740,7 @@ async function loadInterco() {
       ? 'All pairs net to zero'
       : variances.length + ' pair(s) out of balance';
     document.getElementById('interco-sub').textContent =
-      'As at today \u00B7 ' + foundCodes.length + ' of 6 entities connected';
+      'As at today \u00B7 ' + foundCodes.length + ' of ' + ENTITY_ORDER.length + ' entities connected';
 
     statusDot.className = 'status-dot' + (variances.length ? ' error' : '');
     statusText.textContent = variances.length ? 'Breaks found' : 'Live data';
