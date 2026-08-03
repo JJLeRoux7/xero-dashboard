@@ -262,23 +262,25 @@ const ORG_NAMES = [
 ];
 
 // --- intercompany control-account codes, keyed by the entity they identify ---
+// Note: Safe Space Talent Group Limited (7315) is deliberately excluded here.
+// The Xero app used for this dashboard has a fixed 5-connection cap, and with
+// 6 candidate entities one connection always got bumped. SST Group is the
+// pure holding entity with the least activity, so it's the one left out.
 const ENTITY_CODES = {
   'Safe Space Talent Limited': '7310',
   'SST Stand & Deliver Holding Limited': '7311',
   'SST E4All Holding Limited': '7312',
   'Enterprise4All (North West) Limited': '7313',
-  'Stand & Deliver Limited': '7314',
-  'Safe Space Talent Group Limited': '7315'
+  'Stand & Deliver Limited': '7314'
 };
 const CODE_TO_NAME = Object.fromEntries(Object.entries(ENTITY_CODES).map(function (e) { return [e[1], e[0]]; }));
-const ENTITY_ORDER = ['7310', '7311', '7312', '7313', '7314', '7315'];
+const ENTITY_ORDER = ['7310', '7311', '7312', '7313', '7314'];
 const SHORT_NAMES = {
   'Safe Space Talent Limited': 'Safe Space Talent',
   'SST Stand & Deliver Holding Limited': 'SST S&D Holding',
   'SST E4All Holding Limited': 'SST E4All Holding',
   'Enterprise4All (North West) Limited': 'Enterprise4All',
-  'Stand & Deliver Limited': 'Stand & Deliver',
-  'Safe Space Talent Group Limited': 'SST Group'
+  'Stand & Deliver Limited': 'Stand & Deliver'
 };
 const VARIANCE_TOLERANCE = 0.01;
 
