@@ -119,6 +119,16 @@
   .save-status { font-size: 11px; color: #888780; margin-left: 4px; white-space: nowrap; }
   .debt-org-card { margin-bottom: 1.5rem; }
   .revolving-badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #15803d; background: #ecfdf3; border: 0.5px solid #b7e4c7; border-radius: 4px; padding: 1px 6px; margin-left: 8px; vertical-align: middle; }
+
+  #hmrc-screen { display: none; }
+  table.hmrc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.hmrc-table th { text-align: right; font-size: 11px; color: #888780; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; padding: 6px 14px; border-bottom: 0.5px solid #e8e7e1; }
+  table.hmrc-table th:first-child, table.hmrc-table td:first-child { text-align: left; }
+  table.hmrc-table td { padding: 10px 14px; border-bottom: 0.5px solid #f0efe9; text-align: right; vertical-align: top; }
+  table.hmrc-table td:first-child { color: #1a1a18; font-weight: 600; }
+  table.hmrc-table td.amt { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.hmrc-table td.amt.negative { color: #4c8a2e; }
+  .hmrc-lines { font-size: 11px; color: #a3a299; margin-top: 3px; line-height: 1.5; text-align: right; }
 </style>
 </head>
 <body>
@@ -160,6 +170,7 @@
     <button class="tab-btn active" id="tab-bank" onclick="showView('bank')">Bank Balances</button>
     <button class="tab-btn" id="tab-interco" onclick="showView('interco')">Interco Matrix</button>
     <button class="tab-btn" id="tab-debt" onclick="showView('debt')">Debt Facilities</button>
+    <button class="tab-btn" id="tab-hmrc" onclick="showView('hmrc')">HMRC</button>
   </div>
 
   <div id="dashboard-screen">
@@ -252,6 +263,42 @@
     <div class="interco-issues" id="debt-issues"></div>
   </div>
 
+  <div id="hmrc-screen">
+    <div class="top-bar">
+      <div style="font-size:12px;color:#888780;">
+        <span class="status-dot" id="hmrc-status-dot"></span>
+        <span id="hmrc-status-text">Live data</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn-refresh" onclick="loadHmrc()"><span style="font-size:16px;">&#8635;</span> Refresh</button>
+        <button class="btn-signout" onclick="signOut()">Sign out</button>
+      </div>
+    </div>
+
+    <div class="total-card">
+      <div class="label">Total HMRC exposure across group</div>
+      <div class="amount" id="hmrc-grand-total">&mdash;</div>
+      <div class="split-row">
+        <div class="split-item">
+          <div class="split-label">VAT</div>
+          <div class="split-amount" id="hmrc-grand-vat">&mdash;</div>
+        </div>
+        <div class="split-item">
+          <div class="split-label">Corporation Tax</div>
+          <div class="split-amount" id="hmrc-grand-corptax">&mdash;</div>
+        </div>
+        <div class="split-item">
+          <div class="split-label">PAYE &amp; NI</div>
+          <div class="split-amount" id="hmrc-grand-payeni">&mdash;</div>
+        </div>
+      </div>
+      <div class="hint">VAT is taken from the open bill raised to HMRC in the AP ledger &middot; Corporation Tax and PAYE &amp; NI are taken from each entity's Balance Sheet control account, since no bill is raised for those &middot; a negative figure means a credit/refund position</div>
+    </div>
+
+    <div id="hmrc-entities"></div>
+    <div class="interco-issues" id="hmrc-issues"></div>
+  </div>
+
 </div>
 
 <script>
@@ -323,6 +370,17 @@ const REVOLVING_KEYS = [
   'sst-capital-on-tap', 'sst-credit-flex'
 ];
 
+// --- HMRC tracker: matched by account NAME (not code — codes differ per entity),
+// scanned only within the "current liabilities" section of each Balance Sheet.
+const HMRC_KEYWORDS = {
+  vat: ['vat'],
+  corptax: ['corporation tax'],
+  payeni: ['paye payable', 'nic payable']
+};
+const HMRC_CATEGORY_LABEL = { vat: 'VAT', corptax: 'Corporation Tax', payeni: 'PAYE & NI' };
+const HMRC_CONTACT_MATCH = /hmrc|hm revenue|revenue\s*&?\s*customs/i;
+const HMRC_STATE = { entities: [] };
+
 const STATE = { entities: [] };
 const INTERCO_STATE = { matrix: {}, variances: [], issues: [], connectedCodes: [] };
 const DEBT_STATE = { entities: [], limits: {} };
@@ -378,7 +436,7 @@ function startAuth() {
     response_type: 'code',
     client_id: clientId,
     redirect_uri: REDIRECT_URI,
-    scope: 'openid profile email accounting.settings.read accounting.reports.banksummary.read accounting.reports.trialbalance.read accounting.reports.balancesheet.read offline_access',
+    scope: 'openid profile email accounting.settings.read accounting.reports.banksummary.read accounting.reports.trialbalance.read accounting.reports.balancesheet.read accounting.contacts.read accounting.transactions.read offline_access',
     state
   });
   window.location.href = 'https://login.xero.com/identity/connect/authorize?' + params;
@@ -1064,17 +1122,245 @@ async function loadDebt() {
   }
 }
 
+/* ================= HMRC TRACKER ================= */
+
+async function getHmrcBsLines(accessToken, tenantId, codeMap) {
+  const res = await fetch(WORKER + '/xero/Reports/BalanceSheet', {
+    headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
+  });
+  if (!res.ok) throw new Error('BalanceSheet failed: ' + res.status);
+  const data = await res.json();
+  const report = data.Reports && data.Reports[0];
+  const result = {
+    vat: { total: 0, lines: [] },
+    corptax: { total: 0, lines: [] },
+    payeni: { total: 0, lines: [] }
+  };
+  const categoryByCode = {};
+  if (!report) return { result: result, categoryByCode: categoryByCode };
+
+  (report.Rows || []).forEach(function (section) {
+    if (section.RowType !== 'Section') return;
+    const title = (section.Title || '').toLowerCase();
+    const isCurrentLiab = title.indexOf('current liabilities') !== -1 || title.indexOf('falling due within one year') !== -1;
+    if (!isCurrentLiab) return;
+
+    (section.Rows || []).forEach(function (row) {
+      if (row.RowType !== 'Row') return;
+      const cells = row.Cells || [];
+      const name = cells[0] && cells[0].Value || '';
+      const value = parseAmt(cells[1] && cells[1].Value);
+      const n = name.toLowerCase();
+      const attrs = (cells[0].Attributes || []);
+      const accountAttr = attrs.find(function (a) { return a.Id === 'account'; });
+      const code = accountAttr ? codeMap[accountAttr.Value] : null;
+
+      for (const cat in HMRC_KEYWORDS) {
+        if (HMRC_KEYWORDS[cat].some(function (k) { return n.indexOf(k) !== -1; })) {
+          result[cat].total += value;
+          result[cat].lines.push({ name: name, value: value, code: code });
+          if (code) categoryByCode[code] = cat;
+          return;
+        }
+      }
+    });
+  });
+
+  return { result: result, categoryByCode: categoryByCode };
+}
+
+async function getHmrcContactIds(accessToken, tenantId) {
+  const res = await fetch(WORKER + '/xero/Contacts', {
+    headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
+  });
+  if (!res.ok) throw new Error('Contacts failed: ' + res.status);
+  const data = await res.json();
+  return (data.Contacts || [])
+    .filter(function (c) { return HMRC_CONTACT_MATCH.test(c.Name || ''); })
+    .map(function (c) { return c.ContactID; });
+}
+
+async function getOpenHmrcBills(accessToken, tenantId, contactIds, categoryByCode) {
+  const empty = {
+    vat: { total: 0, bills: [] },
+    corptax: { total: 0, bills: [] },
+    payeni: { total: 0, bills: [] }
+  };
+  if (!contactIds.length) return empty;
+
+  const whereClause = 'Type=="ACCPAY" AND Status=="AUTHORISED"';
+  const res = await fetch(WORKER + '/xero/Invoices?where=' + encodeURIComponent(whereClause), {
+    headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
+  });
+  if (!res.ok) throw new Error('Invoices failed: ' + res.status);
+  const data = await res.json();
+  const result = empty;
+
+  (data.Invoices || []).forEach(function (inv) {
+    const cid = inv.Contact && inv.Contact.ContactID;
+    if (contactIds.indexOf(cid) === -1) return;
+    const total = parseFloat(inv.Total) || 0;
+    const amountDue = parseFloat(inv.AmountDue) || 0;
+    if (amountDue <= 0.005) return; // fully paid, nothing outstanding
+    const fraction = total > 0 ? (amountDue / total) : 1;
+
+    const byCat = {};
+    (inv.LineItems || []).forEach(function (li) {
+      const cat = categoryByCode[li.AccountCode];
+      if (!cat) return;
+      const outstanding = (parseFloat(li.LineAmount) || 0) * fraction;
+      byCat[cat] = (byCat[cat] || 0) + outstanding;
+    });
+
+    for (const cat in byCat) {
+      result[cat].total += byCat[cat];
+      result[cat].bills.push({
+        ref: inv.InvoiceNumber || inv.Reference || '(no reference)',
+        dueDate: inv.DueDateString ? inv.DueDateString.split('T')[0] : null,
+        amount: byCat[cat]
+      });
+    }
+  });
+
+  return result;
+}
+
+function hmrcCategoryRowHtml(cat, bsData, apData) {
+  const bsTotal = bsData.total;
+  const apTotal = apData.total;
+  const hasOpenBills = apData.bills.length > 0;
+
+  // VAT: the AP bill is the real "amount owed" per how this group operates.
+  // Corp Tax and PAYE & NI: no bill is raised — the Balance Sheet accrual IS the figure.
+  const usesAp = cat === 'vat';
+  const amount = (usesAp && hasOpenBills) ? apTotal : bsTotal;
+
+  let sourceNote;
+  if (usesAp && hasOpenBills) {
+    sourceNote = apData.bills.map(function (b) {
+      return escapeHtml(b.ref) + (b.dueDate ? ' (due ' + escapeHtml(b.dueDate) + ')' : '') + ': ' + fmt(b.amount, 'GBP');
+    }).join('<br>');
+  } else if (usesAp && !hasOpenBills) {
+    sourceNote = bsData.lines.length
+      ? 'No open VAT bill found &mdash; showing Balance Sheet accrual: ' + bsData.lines.map(function (l) { return escapeHtml(l.name) + ' ' + fmt(l.value, 'GBP'); }).join(', ')
+      : 'No open bill and no matching account found';
+  } else {
+    sourceNote = bsData.lines.length
+      ? bsData.lines.map(function (l) { return escapeHtml(l.name) + ': ' + fmt(l.value, 'GBP'); }).join('<br>')
+      : 'No matching account found';
+  }
+
+  return (
+    '<tr>' +
+      '<td>' + HMRC_CATEGORY_LABEL[cat] + '</td>' +
+      '<td class="amt' + (amount < 0 ? ' negative' : '') + '">' + fmt(amount, 'GBP') + '<div class="hmrc-lines">' + sourceNote + '</div></td>' +
+    '</tr>'
+  );
+}
+
+function renderHmrcEntities() {
+  const container = document.getElementById('hmrc-entities');
+  container.innerHTML = HMRC_STATE.entities.map(function (e) {
+    const vatAmount = (e.ap.vat.bills.length > 0) ? e.ap.vat.total : e.bs.vat.total;
+    const total = vatAmount + e.bs.corptax.total + e.bs.payeni.total;
+    return (
+      '<div class="org-card debt-org-card">' +
+        '<div class="org-header">' +
+          '<div class="org-name">' + escapeHtml(e.displayName) + '</div>' +
+          '<div class="org-total" style="color:' + (total < 0 ? '#4c8a2e' : '#a32d2d') + ';">' + fmt(total, 'GBP') + '</div>' +
+          '<div class="org-sub">Total owed to HMRC' + (e.hmrcContactCount === 0 ? ' &middot; no HMRC contact found in Xero' : '') + '</div>' +
+        '</div>' +
+        '<table class="hmrc-table">' +
+          '<thead><tr><th>Category</th><th>Amount owed</th></tr></thead>' +
+          '<tbody>' +
+            hmrcCategoryRowHtml('vat', e.bs.vat, e.ap.vat) +
+            hmrcCategoryRowHtml('corptax', e.bs.corptax, e.ap.corptax) +
+            hmrcCategoryRowHtml('payeni', e.bs.payeni, e.ap.payeni) +
+          '</tbody>' +
+        '</table>' +
+      '</div>'
+    );
+  }).join('');
+}
+
+async function loadHmrc() {
+  const statusDot = document.getElementById('hmrc-status-dot');
+  const statusText = document.getElementById('hmrc-status-text');
+  const issuesEl = document.getElementById('hmrc-issues');
+  document.getElementById('hmrc-grand-total').textContent = '\u2014';
+  document.getElementById('hmrc-grand-vat').textContent = '\u2014';
+  document.getElementById('hmrc-grand-corptax').textContent = '\u2014';
+  document.getElementById('hmrc-grand-payeni').textContent = '\u2014';
+  document.getElementById('hmrc-entities').innerHTML =
+    '<div class="loading-row"><div class="spinner"></div>Fetching balance sheets\u2026</div>';
+  issuesEl.innerHTML = '';
+
+  try {
+    const accessToken = await getValidAccessToken();
+    const allTenants = await getTenants(accessToken);
+    const tenants = allTenants.filter(function (t) { return ORG_NAMES.indexOf(matchOrg(t.tenantName)) !== -1; });
+
+    const issues = [];
+    const results = await Promise.all(tenants.map(async function (t) {
+      const displayName = matchOrg(t.tenantName);
+      try {
+        const codeMap = await getAccountCodeMap(accessToken, t.tenantId);
+        const bsResult = await getHmrcBsLines(accessToken, t.tenantId, codeMap);
+        const contactIds = await getHmrcContactIds(accessToken, t.tenantId);
+        const ap = await getOpenHmrcBills(accessToken, t.tenantId, contactIds, bsResult.categoryByCode);
+        return { displayName: displayName, bs: bsResult.result, ap: ap, hmrcContactCount: contactIds.length };
+      } catch (e) {
+        issues.push(displayName + ': ' + e.message);
+        const emptyBs = { vat: { total: 0, lines: [] }, corptax: { total: 0, lines: [] }, payeni: { total: 0, lines: [] } };
+        const emptyAp = { vat: { total: 0, bills: [] }, corptax: { total: 0, bills: [] }, payeni: { total: 0, bills: [] } };
+        return { displayName: displayName, bs: emptyBs, ap: emptyAp, hmrcContactCount: 0 };
+      }
+    }));
+
+    const byName = {};
+    results.forEach(function (r) { byName[r.displayName] = r; });
+    const ordered = [];
+    ORG_NAMES.forEach(function (n) { if (byName[n]) { ordered.push(byName[n]); delete byName[n]; } });
+    Object.keys(byName).forEach(function (k) { ordered.push(byName[k]); });
+    HMRC_STATE.entities = ordered;
+
+    renderHmrcEntities();
+
+    const grandVat = ordered.reduce(function (s, e) { return s + ((e.ap.vat.bills.length > 0) ? e.ap.vat.total : e.bs.vat.total); }, 0);
+    const grandCorptax = ordered.reduce(function (s, e) { return s + e.bs.corptax.total; }, 0);
+    const grandPayeni = ordered.reduce(function (s, e) { return s + e.bs.payeni.total; }, 0);
+    const grandTotal = grandVat + grandCorptax + grandPayeni;
+
+    document.getElementById('hmrc-grand-total').textContent = fmt(grandTotal, 'GBP');
+    document.getElementById('hmrc-grand-total').className = 'amount' + (grandTotal < 0 ? '' : '');
+    document.getElementById('hmrc-grand-vat').textContent = fmt(grandVat, 'GBP');
+    document.getElementById('hmrc-grand-corptax').textContent = fmt(grandCorptax, 'GBP');
+    document.getElementById('hmrc-grand-payeni').textContent = fmt(grandPayeni, 'GBP');
+
+    statusDot.className = 'status-dot';
+    statusText.textContent = 'Live data';
+    issuesEl.innerHTML = issues.length ? ('Issues: ' + issues.map(escapeHtml).join(' &middot; ')) : '';
+  } catch (e) {
+    statusDot.className = 'status-dot error';
+    statusText.textContent = 'Error loading data';
+    issuesEl.textContent = e.message;
+  }
+}
+
 /* ================= view switching ================= */
 function showView(view) {
   currentView = view;
   document.getElementById('dashboard-screen').style.display = view === 'bank' ? 'block' : 'none';
   document.getElementById('interco-screen').style.display = view === 'interco' ? 'block' : 'none';
   document.getElementById('debt-screen').style.display = view === 'debt' ? 'block' : 'none';
+  document.getElementById('hmrc-screen').style.display = view === 'hmrc' ? 'block' : 'none';
   document.getElementById('tab-bank').className = 'tab-btn' + (view === 'bank' ? ' active' : '');
   document.getElementById('tab-interco').className = 'tab-btn' + (view === 'interco' ? ' active' : '');
   document.getElementById('tab-debt').className = 'tab-btn' + (view === 'debt' ? ' active' : '');
+  document.getElementById('tab-hmrc').className = 'tab-btn' + (view === 'hmrc' ? ' active' : '');
   if (view === 'interco' && Object.keys(INTERCO_STATE.matrix).length === 0) loadInterco();
   if (view === 'debt' && DEBT_STATE.entities.length === 0) loadDebt();
+  if (view === 'hmrc' && HMRC_STATE.entities.length === 0) loadHmrc();
 }
 
 function signOut() {
@@ -1110,6 +1396,7 @@ async function enterDashboard() {
   document.getElementById('dashboard-screen').style.display = 'block';
   document.getElementById('interco-screen').style.display = 'none';
   document.getElementById('debt-screen').style.display = 'none';
+  document.getElementById('hmrc-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('callback-screen').style.display = 'none';
   document.getElementById('view-tabs').style.display = 'flex';
