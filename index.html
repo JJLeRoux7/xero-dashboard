@@ -118,6 +118,7 @@
   .save-btn:hover { background: #166534; }
   .save-status { font-size: 11px; color: #888780; margin-left: 4px; white-space: nowrap; }
   .debt-org-card { margin-bottom: 1.5rem; }
+  .revolving-badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #15803d; background: #ecfdf3; border: 0.5px solid #b7e4c7; border-radius: 4px; padding: 1px 6px; margin-left: 8px; vertical-align: middle; }
 </style>
 </head>
 <body>
@@ -239,6 +240,10 @@
           <div class="split-label">Long-term</div>
           <div class="split-amount" id="debt-grand-long">&mdash;</div>
         </div>
+        <div class="split-item">
+          <div class="split-label">Available to draw now</div>
+          <div class="split-amount" id="debt-grand-available" style="color:#7dd88a;">&mdash;</div>
+        </div>
       </div>
       <div class="hint">Balances pulled live from Xero &middot; limits entered manually and saved centrally &middot; headroom turns red under 10% remaining</div>
     </div>
@@ -309,6 +314,14 @@ const LIMIT_KEY_MAP = {
   'sst|Capital on Tap Account': 'sst-capital-on-tap',
   'sst|Credit Flex loan': 'sst-credit-flex'
 };
+// facilities where undrawn headroom is genuinely available on demand (credit
+// cards, overdrafts, flexi-pay lines) as opposed to term loans you can't just
+// draw more on (Funding Circle term loan, IWOCA, Bounce Back Loan)
+const REVOLVING_KEYS = [
+  'e4a-capital-on-tap', 'e4a-hsbc-commercial-card',
+  'sd-hsbc-overdraft', 'sd-funding-circle-flexipay',
+  'sst-capital-on-tap', 'sst-credit-flex'
+];
 
 const STATE = { entities: [] };
 const INTERCO_STATE = { matrix: {}, variances: [], issues: [], connectedCodes: [] };
@@ -900,10 +913,11 @@ function debtRowHtml(entityKey, item) {
   const headroom = hasLimit ? limitVal - item.value : null;
   const tight = hasLimit && limitVal !== 0 && headroom < (limitVal * 0.1);
   const inputId = 'limit-' + (storageKey || Math.random().toString(36).slice(2));
+  const isRevolving = storageKey && REVOLVING_KEYS.indexOf(storageKey) !== -1;
 
   return (
     '<tr>' +
-      '<td>' + escapeHtml(item.name) + '</td>' +
+      '<td>' + escapeHtml(item.name) + (isRevolving ? '<span class="revolving-badge">On demand</span>' : '') + '</td>' +
       '<td class="amt">' + fmt(item.value, 'GBP') + '</td>' +
       '<td>' +
         '<div class="limit-cell">' +
@@ -1027,6 +1041,18 @@ async function loadDebt() {
     document.getElementById('debt-grand-total').textContent = fmt(grandShort + grandLong, 'GBP');
     document.getElementById('debt-grand-short').textContent = fmt(grandShort, 'GBP');
     document.getElementById('debt-grand-long').textContent = fmt(grandLong, 'GBP');
+
+    let availableNow = 0;
+    ordered.forEach(function (e) {
+      e.shortTerm.concat(e.longTerm).forEach(function (item) {
+        const storageKey = limitKeyFor(e.key, item.name);
+        if (!storageKey || REVOLVING_KEYS.indexOf(storageKey) === -1) return;
+        const limitVal = DEBT_STATE.limits[storageKey];
+        if (limitVal === null || limitVal === undefined) return;
+        availableNow += (limitVal - item.value);
+      });
+    });
+    document.getElementById('debt-grand-available').textContent = fmt(availableNow, 'GBP');
 
     statusDot.className = 'status-dot';
     statusText.textContent = 'Live data';
