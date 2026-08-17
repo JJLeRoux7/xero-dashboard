@@ -1303,18 +1303,25 @@ async function loadHmrc() {
     const issues = [];
     const results = await Promise.all(tenants.map(async function (t) {
       const displayName = matchOrg(t.tenantName);
+      let bsResult = { result: { vat: { total: 0, lines: [] }, corptax: { total: 0, lines: [] }, payeni: { total: 0, lines: [] } }, categoryByCode: {} };
+      let contactIds = [];
+      let ap = { vat: { total: 0, bills: [] }, corptax: { total: 0, bills: [] }, payeni: { total: 0, bills: [] } };
+
       try {
         const codeMap = await getAccountCodeMap(accessToken, t.tenantId);
-        const bsResult = await getHmrcBsLines(accessToken, t.tenantId, codeMap);
-        const contactIds = await getHmrcContactIds(accessToken, t.tenantId);
-        const ap = await getOpenHmrcBills(accessToken, t.tenantId, contactIds, bsResult.categoryByCode);
-        return { displayName: displayName, bs: bsResult.result, ap: ap, hmrcContactCount: contactIds.length };
+        bsResult = await getHmrcBsLines(accessToken, t.tenantId, codeMap);
       } catch (e) {
-        issues.push(displayName + ': ' + e.message);
-        const emptyBs = { vat: { total: 0, lines: [] }, corptax: { total: 0, lines: [] }, payeni: { total: 0, lines: [] } };
-        const emptyAp = { vat: { total: 0, bills: [] }, corptax: { total: 0, bills: [] }, payeni: { total: 0, bills: [] } };
-        return { displayName: displayName, bs: emptyBs, ap: emptyAp, hmrcContactCount: 0 };
+        issues.push(displayName + ' (Balance Sheet): ' + e.message);
       }
+
+      try {
+        contactIds = await getHmrcContactIds(accessToken, t.tenantId);
+        ap = await getOpenHmrcBills(accessToken, t.tenantId, contactIds, bsResult.categoryByCode);
+      } catch (e) {
+        issues.push(displayName + ' (AP ledger \u2014 check you\'ve reconnected with the new permissions): ' + e.message);
+      }
+
+      return { displayName: displayName, bs: bsResult.result, ap: ap, hmrcContactCount: contactIds.length };
     }));
 
     const byName = {};
