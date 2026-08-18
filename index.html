@@ -1180,7 +1180,7 @@ async function getHmrcContactIds(accessToken, tenantId) {
     .map(function (c) { return c.ContactID; });
 }
 
-async function getOpenHmrcBills(accessToken, tenantId, contactIds, categoryByCode) {
+async function getOpenHmrcBills(accessToken, tenantId, contactIds) {
   const empty = {
     vat: { total: 0, bills: [] },
     corptax: { total: 0, bills: [] },
@@ -1196,30 +1196,20 @@ async function getOpenHmrcBills(accessToken, tenantId, contactIds, categoryByCod
   const data = await res.json();
   const result = empty;
 
+  // Every open bill raised to HMRC is a VAT payment per how this group operates —
+  // no need to inspect line items/account codes (which Xero's list endpoint
+  // doesn't reliably return anyway).
   (data.Invoices || []).forEach(function (inv) {
     const cid = inv.Contact && inv.Contact.ContactID;
     if (contactIds.indexOf(cid) === -1) return;
-    const total = parseFloat(inv.Total) || 0;
     const amountDue = parseFloat(inv.AmountDue) || 0;
     if (amountDue <= 0.005) return; // fully paid, nothing outstanding
-    const fraction = total > 0 ? (amountDue / total) : 1;
-
-    const byCat = {};
-    (inv.LineItems || []).forEach(function (li) {
-      const cat = categoryByCode[li.AccountCode];
-      if (!cat) return;
-      const outstanding = (parseFloat(li.LineAmount) || 0) * fraction;
-      byCat[cat] = (byCat[cat] || 0) + outstanding;
+    result.vat.total += amountDue;
+    result.vat.bills.push({
+      ref: inv.InvoiceNumber || inv.Reference || '(no reference)',
+      dueDate: inv.DueDateString ? inv.DueDateString.split('T')[0] : null,
+      amount: amountDue
     });
-
-    for (const cat in byCat) {
-      result[cat].total += byCat[cat];
-      result[cat].bills.push({
-        ref: inv.InvoiceNumber || inv.Reference || '(no reference)',
-        dueDate: inv.DueDateString ? inv.DueDateString.split('T')[0] : null,
-        amount: byCat[cat]
-      });
-    }
   });
 
   return result;
@@ -1316,7 +1306,7 @@ async function loadHmrc() {
 
       try {
         contactIds = await getHmrcContactIds(accessToken, t.tenantId);
-        ap = await getOpenHmrcBills(accessToken, t.tenantId, contactIds, bsResult.categoryByCode);
+        ap = await getOpenHmrcBills(accessToken, t.tenantId, contactIds);
       } catch (e) {
         issues.push(displayName + ' (AP ledger \u2014 check you\'ve reconnected with the new permissions): ' + e.message);
       }
