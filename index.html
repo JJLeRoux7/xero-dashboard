@@ -338,10 +338,10 @@
     <div id="ap-entity-tabs"></div>
 
     <table class="ap-table">
-      <thead><tr><th>Supplier / ref</th><th>Entity</th><th>Due date</th><th>Days</th><th>Status</th><th>Amount</th></tr></thead>
+      <thead><tr><th>Supplier / ref</th><th id="ap-detail-entity-header">Entity</th><th>Due date</th><th>Days</th><th>Status</th><th>Amount</th></tr></thead>
       <tbody id="ap-detail-body"></tbody>
       <tfoot>
-        <tr><td colspan="5" style="padding:10px;font-weight:600;border-top:0.5px solid #d3d1c7;">Total outstanding</td>
+        <tr><td id="ap-detail-total-label" colspan="5" style="padding:10px;font-weight:600;border-top:0.5px solid #d3d1c7;">Total outstanding</td>
         <td id="ap-detail-total" style="text-align:right;padding:10px;font-weight:600;border-top:0.5px solid #d3d1c7;"></td></tr>
       </tfoot>
     </table>
@@ -1498,6 +1498,10 @@ async function loadApOverview() {
 }
 
 function renderApDetailTable(filter) {
+  const showEntity = filter === 'all';
+  document.getElementById('ap-detail-entity-header').style.display = showEntity ? '' : 'none';
+  document.getElementById('ap-detail-total-label').setAttribute('colspan', showEntity ? '5' : '4');
+
   const bills = (AP_STATE.detail || []).filter(function (b) { return filter === 'all' || b.entityKey === filter; });
   const bySupplier = {};
   bills.forEach(function (b) {
@@ -1512,20 +1516,22 @@ function renderApDetailTable(filter) {
 
   let html = '';
   let grandTotal = 0;
+  const groupColspan = showEntity ? 5 : 4;
   suppliers.forEach(function (supplier) {
     const supplierBills = bySupplier[supplier];
     const supplierTotal = supplierBills.reduce(function (s, b) { return s + b.amount; }, 0);
     grandTotal += supplierTotal;
-    html += '<tr class="ap-supplier-row"><td colspan="5">' + escapeHtml(supplier) + '</td><td>' + fmt(supplierTotal, 'GBP') + '</td></tr>';
+    html += '<tr class="ap-supplier-row"><td colspan="' + groupColspan + '">' + escapeHtml(supplier) + '</td><td>' + fmt(supplierTotal, 'GBP') + '</td></tr>';
     supplierBills.sort(function (a, b) { return (b.days || -999) - (a.days || -999); }).forEach(function (b) {
-      html += '<tr class="ap-bill-row"><td>' + escapeHtml(b.ref) + '</td><td style="color:#888780;">' + AP_ENTITY_LABEL[b.entityKey] + '</td>' +
+      html += '<tr class="ap-bill-row"><td>' + escapeHtml(b.ref) + '</td>' +
+        (showEntity ? '<td style="color:#888780;">' + AP_ENTITY_LABEL[b.entityKey] + '</td>' : '') +
         '<td style="color:#888780;">' + (b.dueDate || '\u2014') + '</td>' +
         '<td style="color:#888780;">' + (b.days !== null ? b.days : '\u2014') + '</td>' +
         '<td>' + apBadgeHtml(b) + '</td><td>' + fmt(b.amount, 'GBP') + '</td></tr>';
     });
   });
 
-  document.getElementById('ap-detail-body').innerHTML = html || '<tr><td colspan="6" style="color:#888780;padding:1rem;">No bills for this entity</td></tr>';
+  document.getElementById('ap-detail-body').innerHTML = html || '<tr><td colspan="' + (groupColspan + 1) + '" style="color:#888780;padding:1rem;">No bills for this entity</td></tr>';
   document.getElementById('ap-detail-total').textContent = fmt(grandTotal, 'GBP');
 }
 
