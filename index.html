@@ -12,23 +12,10 @@
   #last-updated { font-size: 12px; color: #888780; }
   .container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
 
-  #auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 70vh; text-align: center; }
-  .auth-card { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 16px; padding: 2.5rem 3rem; max-width: 440px; width: 100%; }
-  .auth-card h2 { font-size: 20px; font-weight: 500; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
-  .auth-card p { font-size: 14px; color: #5f5e5a; margin-bottom: 2rem; line-height: 1.6; }
-  .field-group { text-align: left; margin-bottom: 1rem; }
-  .field-group label { display: block; font-size: 12px; font-weight: 500; color: #5f5e5a; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
-  .field-group input { width: 100%; padding: 10px 14px; border: 0.5px solid #d3d1c7; border-radius: 8px; font-size: 14px; background: #f5f4f0; color: #1a1a18; font-family: 'SF Mono','Consolas',monospace; }
-  .field-group input:focus { outline: none; border-color: #888780; background: #fff; }
-  .btn-connect { width: 100%; padding: 12px; background: #1a1a18; color: #f5f4f0; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 0.5rem; }
-  .btn-connect:hover { opacity: 0.85; }
-  .help-link { font-size: 12px; color: #888780; margin-top: 1.25rem; display: block; line-height: 1.6; }
-  .help-link a { color: #5f5e5a; text-decoration: underline; }
-  .error-banner { background: #fcebeb; border: 0.5px solid #f09595; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #a32d2d; margin-bottom: 1rem; display: none; }
-
   #dashboard-screen { display: none; }
   #interco-screen { display: none; }
   #debt-screen { display: none; }
+  #hmrc-screen { display: none; }
   .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
   .total-card { background: #1a1a18; color: #f5f4f0; border-radius: 16px; padding: 1.75rem 2rem; margin-bottom: 2rem; }
   .total-card .label { font-size: 12px; color: #888780; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.5rem; }
@@ -64,14 +51,10 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .btn-refresh { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer; color: #1a1a18; display: flex; align-items: center; gap: 6px; }
   .btn-refresh:hover { background: #f5f4f0; }
-  .btn-signout { background: none; border: none; font-size: 13px; color: #888780; cursor: pointer; padding: 8px; text-decoration: underline; }
   .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #63a522; display: inline-block; margin-right: 6px; }
   .status-dot.error { background: #e24b4a; }
 
-  #callback-screen { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 70vh; text-align: center; gap: 1rem; }
-  #callback-screen p { font-size: 15px; color: #5f5e5a; }
-
-  #view-tabs { display: none; gap: 8px; margin-bottom: 1.25rem; }
+  #view-tabs { display: flex; gap: 8px; margin-bottom: 1.25rem; }
   .tab-btn { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer; color: #5f5e5a; }
   .tab-btn.active { background: #1a1a18; color: #f5f4f0; border-color: #1a1a18; }
 
@@ -120,7 +103,6 @@
   .debt-org-card { margin-bottom: 1.5rem; }
   .revolving-badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #15803d; background: #ecfdf3; border: 0.5px solid #b7e4c7; border-radius: 4px; padding: 1px 6px; margin-left: 8px; vertical-align: middle; }
 
-  #hmrc-screen { display: none; }
   table.hmrc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   table.hmrc-table th { text-align: right; font-size: 11px; color: #888780; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; padding: 6px 14px; border-bottom: 0.5px solid #e8e7e1; }
   table.hmrc-table th:first-child, table.hmrc-table td:first-child { text-align: left; }
@@ -129,6 +111,8 @@
   table.hmrc-table td.amt { font-variant-numeric: tabular-nums; white-space: nowrap; }
   table.hmrc-table td.amt.negative { color: #4c8a2e; }
   .hmrc-lines { font-size: 11px; color: #a3a299; margin-top: 3px; line-height: 1.5; text-align: right; }
+
+  .load-error { background: #fcebeb; border: 0.5px solid #f09595; border-radius: 12px; padding: 1.25rem 1.5rem; color: #a32d2d; font-size: 14px; line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -139,32 +123,6 @@
 </header>
 
 <div class="container">
-
-  <div id="auth-screen">
-    <div class="auth-card">
-      <h2>Connect to Xero</h2>
-      <p>Enter your Xero OAuth app credentials to get started. These are stored only in your browser.</p>
-      <div id="error-msg" class="error-banner"></div>
-      <div class="field-group">
-        <label>Client ID</label>
-        <input type="text" id="client-id" placeholder="Paste your Xero Client ID" autocomplete="off" />
-      </div>
-      <div class="field-group">
-        <label>Client Secret</label>
-        <input type="password" id="client-secret" placeholder="Paste your Xero Client Secret" autocomplete="off" />
-      </div>
-      <button class="btn-connect" onclick="startAuth()">Connect to Xero &rarr;</button>
-      <span class="help-link">
-        No credentials yet? <a href="https://developer.xero.com/app/manage" target="_blank">Create a free Xero app</a>.<br>
-        Set the redirect URI to: <strong id="redirect-uri-display"></strong>
-      </span>
-    </div>
-  </div>
-
-  <div id="callback-screen">
-    <div class="spinner" style="width:24px;height:24px;border-width:3px;"></div>
-    <p id="callback-msg">Connecting to Xero&hellip;</p>
-  </div>
 
   <div id="view-tabs">
     <button class="tab-btn active" id="tab-bank" onclick="showView('bank')">Bank Balances</button>
@@ -179,10 +137,7 @@
         <span class="status-dot" id="status-dot"></span>
         <span id="status-text">Live data</span>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn-refresh" onclick="loadBalances()"><span style="font-size:16px;">&#8635;</span> Refresh</button>
-        <button class="btn-signout" onclick="signOut()">Sign out</button>
-      </div>
+      <button class="btn-refresh" onclick="loadBalances()"><span style="font-size:16px;">&#8635;</span> Refresh</button>
     </div>
 
     <div class="total-card">
@@ -201,10 +156,7 @@
         <span class="status-dot" id="interco-status-dot"></span>
         <span id="interco-status-text">Live data</span>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn-refresh" onclick="loadInterco()"><span style="font-size:16px;">&#8635;</span> Refresh</button>
-        <button class="btn-signout" onclick="signOut()">Sign out</button>
-      </div>
+      <button class="btn-refresh" onclick="loadInterco()"><span style="font-size:16px;">&#8635;</span> Refresh</button>
     </div>
 
     <div class="total-card">
@@ -233,10 +185,7 @@
         <span class="status-dot" id="debt-status-dot"></span>
         <span id="debt-status-text">Live data</span>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn-refresh" onclick="loadDebt()"><span style="font-size:16px;">&#8635;</span> Refresh</button>
-        <button class="btn-signout" onclick="signOut()">Sign out</button>
-      </div>
+      <button class="btn-refresh" onclick="loadDebt()"><span style="font-size:16px;">&#8635;</span> Refresh</button>
     </div>
 
     <div class="total-card">
@@ -269,10 +218,7 @@
         <span class="status-dot" id="hmrc-status-dot"></span>
         <span id="hmrc-status-text">Live data</span>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn-refresh" onclick="loadHmrc()"><span style="font-size:16px;">&#8635;</span> Refresh</button>
-        <button class="btn-signout" onclick="signOut()">Sign out</button>
-      </div>
+      <button class="btn-refresh" onclick="loadHmrc()"><span style="font-size:16px;">&#8635;</span> Refresh</button>
     </div>
 
     <div class="total-card">
@@ -303,8 +249,6 @@
 
 <script>
 const WORKER = 'https://xero-proxy.jj-026.workers.dev';
-const REDIRECT_URI = window.location.origin + window.location.pathname;
-const STORAGE_KEY = 'xero_dash_creds';
 
 const ORG_NAMES = [
   'Enterprise4All (North West) Limited',
@@ -312,11 +256,6 @@ const ORG_NAMES = [
   'Safe Space Talent Limited'
 ];
 
-// --- intercompany control-account codes, keyed by the entity they identify ---
-// Note: Safe Space Talent Group Limited (7315) is deliberately excluded here.
-// The Xero app used for this dashboard has a fixed 5-connection cap, and with
-// 6 candidate entities one connection always got bumped. SST Group is the
-// pure holding entity with the least activity, so it's the one left out.
 const ENTITY_CODES = {
   'Safe Space Talent Limited': '7310',
   'SST Stand & Deliver Holding Limited': '7311',
@@ -335,7 +274,6 @@ const SHORT_NAMES = {
 };
 const VARIANCE_TOLERANCE = 0.01;
 
-// --- debt facilities: entity short keys + facility keyword matching ---
 const DEBT_ENTITY_KEY = {
   'Enterprise4All (North West) Limited': 'e4a',
   'Stand & Deliver Limited': 'sd',
@@ -349,7 +287,6 @@ const DEBT_EXCLUDE = [
   'accounts payable', 'wages payable', 'pensions payable',
   'provision for corporation tax', 'deferred tax', 'vat'
 ];
-// name (as it appears on the Balance Sheet) -> stable storage key for its limit
 const LIMIT_KEY_MAP = {
   'e4a|Capital on Tap Account': 'e4a-capital-on-tap',
   'e4a|HSBC Commercial Card 9268': 'e4a-hsbc-commercial-card',
@@ -361,17 +298,12 @@ const LIMIT_KEY_MAP = {
   'sst|Capital on Tap Account': 'sst-capital-on-tap',
   'sst|Credit Flex loan': 'sst-credit-flex'
 };
-// facilities where undrawn headroom is genuinely available on demand (credit
-// cards, overdrafts, flexi-pay lines) as opposed to term loans you can't just
-// draw more on (Funding Circle term loan, IWOCA, Bounce Back Loan)
 const REVOLVING_KEYS = [
   'e4a-capital-on-tap', 'e4a-hsbc-commercial-card',
   'sd-hsbc-overdraft', 'sd-funding-circle-flexipay',
   'sst-capital-on-tap', 'sst-credit-flex'
 ];
 
-// --- HMRC tracker: matched by account NAME (not code — codes differ per entity),
-// scanned only within the "current liabilities" section of each Balance Sheet.
 const HMRC_KEYWORDS = {
   vat: ['vat'],
   corptax: ['corporation tax'],
@@ -385,8 +317,6 @@ const STATE = { entities: [] };
 const INTERCO_STATE = { matrix: {}, variances: [], issues: [], connectedCodes: [] };
 const DEBT_STATE = { entities: [], limits: {} };
 let currentView = 'bank';
-
-document.getElementById('redirect-uri-display').textContent = REDIRECT_URI;
 
 function fmt(amount, currency) {
   const sym = currency === 'GBP' ? '\u00A3' : currency === 'USD' ? '$' : currency === 'EUR' ? '\u20AC' : (currency + ' ');
@@ -405,7 +335,6 @@ function parseAmt(val) {
   return neg ? -n : n;
 }
 
-/* ----- manual statement balances (persisted in browser) ----- */
 function stmtKey(tenantId, name) { return 'xero_stmt::' + tenantId + '::' + name; }
 function getStmt(tenantId, name) {
   const v = localStorage.getItem(stmtKey(tenantId, name));
@@ -420,70 +349,15 @@ function setStmt(tenantId, name, raw) {
   else localStorage.setItem(key, clean);
 }
 
-/* ----- credentials & tokens (persisted in browser, survives closing it) ----- */
-function showError(msg) { const el = document.getElementById('error-msg'); el.textContent = msg; el.style.display = 'block'; }
-function saveCredentials(id, secret) { localStorage.setItem(STORAGE_KEY, JSON.stringify({ clientId: id, clientSecret: secret })); }
-function getCredentials() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { return null; } }
-
-function startAuth() {
-  const clientId = document.getElementById('client-id').value.trim();
-  const clientSecret = document.getElementById('client-secret').value.trim();
-  if (!clientId || !clientSecret) { showError('Please enter both your Client ID and Client Secret.'); return; }
-  saveCredentials(clientId, clientSecret);
-  const state = Math.random().toString(36).slice(2);
-  sessionStorage.setItem('xero_state', state);
-  const params = new URLSearchParams({
-    response_type: 'code',
-    client_id: clientId,
-    redirect_uri: REDIRECT_URI,
-    scope: 'openid profile email accounting.settings.read accounting.reports.banksummary.read accounting.reports.trialbalance.read accounting.reports.balancesheet.read accounting.contacts.read accounting.invoices.read offline_access',
-    state
-  });
-  window.location.href = 'https://login.xero.com/identity/connect/authorize?' + params;
-}
-
-async function exchangeCode(code) {
-  const creds = getCredentials();
-  if (!creds) throw new Error('Credentials not found. Please reconnect.');
-  const basicAuth = btoa(creds.clientId + ':' + creds.clientSecret);
-  const res = await fetch(WORKER + '/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Basic ' + basicAuth },
-    body: new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: REDIRECT_URI })
-  });
-  if (!res.ok) throw new Error('Token exchange failed: ' + (await res.text()));
-  return res.json();
-}
-async function refreshToken(refreshTok) {
-  const creds = getCredentials();
-  if (!creds) throw new Error('No credentials stored.');
-  const basicAuth = btoa(creds.clientId + ':' + creds.clientSecret);
-  const res = await fetch(WORKER + '/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Basic ' + basicAuth },
-    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshTok })
-  });
-  if (!res.ok) throw new Error('Token refresh failed');
-  return res.json();
-}
-function saveTokens(tokens) { const expiry = Date.now() + tokens.expires_in * 1000; localStorage.setItem('xero_tokens', JSON.stringify({ ...tokens, expiry })); }
-function getTokens() { try { return JSON.parse(localStorage.getItem('xero_tokens')); } catch { return null; } }
-async function getValidAccessToken() {
-  let tokens = getTokens();
-  if (!tokens) throw new Error('Not authenticated');
-  if (Date.now() > tokens.expiry - 60000) { const r = await refreshToken(tokens.refresh_token); saveTokens(r); tokens = r; }
-  return tokens.access_token;
-}
-async function getTenants(accessToken) {
-  const res = await fetch(WORKER + '/connections', { headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' } });
-  if (!res.ok) throw new Error('Failed to fetch organisations');
+async function getTenants() {
+  const res = await fetch(WORKER + '/connections', { headers: { 'Accept': 'application/json' } });
+  if (!res.ok) throw new Error('Failed to fetch organisations \u2014 ' + (await res.text()));
   return res.json();
 }
 
-/* ----- balances (Balance in Xero via BankSummary, col 4 = closing balance) ----- */
-async function getEntityBalances(accessToken, tenantId) {
+async function getEntityBalances(tenantId) {
   const res = await fetch(WORKER + '/xero/Reports/BankSummary', {
-    headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
+    headers: { 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
   });
   if (!res.ok) throw new Error('BankSummary failed: ' + res.status);
   const data = await res.json();
@@ -524,7 +398,16 @@ function matchOrg(tenantName) {
   return tenantName;
 }
 
-/* ----- rendering (bank balances) ----- */
+function showLoadError(containerEl, err) {
+  const isAuthIssue = /not connected/i.test(err.message);
+  containerEl.innerHTML =
+    '<div class="load-error">' +
+      (isAuthIssue
+        ? 'Xero isn\u2019t connected yet on the server side. JJ needs to visit the one-time connect link.'
+        : 'Something went wrong loading this data: ' + escapeHtml(err.message)) +
+    '</div>';
+}
+
 function renderSkeleton() {
   const grid = document.getElementById('orgs-grid');
   grid.innerHTML = ORG_NAMES.map(function (n) {
@@ -649,13 +532,12 @@ async function loadBalances() {
   document.getElementById('entity-count').textContent = 'Loading all entities\u2026';
 
   try {
-    const accessToken = await getValidAccessToken();
-    const allTenants = await getTenants(accessToken);
+    const allTenants = await getTenants();
     const tenants = allTenants.filter(function (t) { return ORG_NAMES.indexOf(matchOrg(t.tenantName)) !== -1; });
 
     const results = await Promise.all(tenants.map(async function (t) {
       try {
-        const accounts = await getEntityBalances(accessToken, t.tenantId);
+        const accounts = await getEntityBalances(t.tenantId);
         return { displayName: matchOrg(t.tenantName), tenantId: t.tenantId, accounts: accounts };
       } catch (e) {
         return { displayName: matchOrg(t.tenantName), tenantId: t.tenantId, accounts: [] };
@@ -685,15 +567,14 @@ async function loadBalances() {
   } catch (e) {
     statusDot.className = 'status-dot error';
     statusText.textContent = 'Error loading data';
-    document.getElementById('entity-count').textContent = e.message;
+    showLoadError(document.getElementById('orgs-grid'), e);
+    document.getElementById('entity-count').textContent = '';
   }
 }
 
-/* ================= INTERCO MATRIX ================= */
-
-async function getAccountCodeMap(accessToken, tenantId) {
+async function getAccountCodeMap(tenantId) {
   const res = await fetch(WORKER + '/xero/Accounts', {
-    headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
+    headers: { 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
   });
   if (!res.ok) throw new Error('Accounts failed: ' + res.status);
   const data = await res.json();
@@ -711,9 +592,9 @@ function flattenTBRows(rows, out) {
   return out;
 }
 
-async function getTrialBalanceByCode(accessToken, tenantId, codeMap) {
+async function getTrialBalanceByCode(tenantId, codeMap) {
   const res = await fetch(WORKER + '/xero/Reports/TrialBalance', {
-    headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
+    headers: { 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
   });
   if (!res.ok) throw new Error('TrialBalance failed: ' + res.status);
   const data = await res.json();
@@ -747,8 +628,7 @@ async function loadInterco() {
   issuesEl.innerHTML = '';
 
   try {
-    const accessToken = await getValidAccessToken();
-    const tenants = await getTenants(accessToken);
+    const tenants = await getTenants();
 
     const matrix = {};
     const issues = [];
@@ -760,8 +640,8 @@ async function loadInterco() {
       if (!ownCode) return;
       foundCodes.push(ownCode);
       try {
-        const codeMap = await getAccountCodeMap(accessToken, t.tenantId);
-        const byCode = await getTrialBalanceByCode(accessToken, t.tenantId, codeMap);
+        const codeMap = await getAccountCodeMap(t.tenantId);
+        const byCode = await getTrialBalanceByCode(t.tenantId, codeMap);
         matrix[ownCode] = {};
         ENTITY_ORDER.forEach(function (c) {
           if (c === ownCode) return;
@@ -811,7 +691,8 @@ async function loadInterco() {
   } catch (e) {
     statusDot.className = 'status-dot error';
     statusText.textContent = 'Error loading data';
-    document.getElementById('interco-sub').textContent = e.message;
+    document.getElementById('interco-sub').textContent = '';
+    showLoadError(table.parentElement, e);
   }
 }
 
@@ -894,11 +775,9 @@ function renderPairsTable() {
   table.innerHTML = html + rowsHtml + '</tbody>';
 }
 
-/* ================= DEBT FACILITIES ================= */
-
-async function getBalanceSheetDebtLines(accessToken, tenantId) {
+async function getBalanceSheetDebtLines(tenantId) {
   const res = await fetch(WORKER + '/xero/Reports/BalanceSheet', {
-    headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
+    headers: { 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
   });
   if (!res.ok) throw new Error('BalanceSheet failed: ' + res.status);
   const data = await res.json();
@@ -1058,8 +937,7 @@ async function loadDebt() {
   issuesEl.innerHTML = '';
 
   try {
-    const accessToken = await getValidAccessToken();
-    const allTenants = await getTenants(accessToken);
+    const allTenants = await getTenants();
     const tenants = allTenants.filter(function (t) { return ORG_NAMES.indexOf(matchOrg(t.tenantName)) !== -1; });
 
     const limits = await getDebtLimits();
@@ -1070,7 +948,7 @@ async function loadDebt() {
       const displayName = matchOrg(t.tenantName);
       const key = DEBT_ENTITY_KEY[displayName] || displayName;
       try {
-        const lines = await getBalanceSheetDebtLines(accessToken, t.tenantId);
+        const lines = await getBalanceSheetDebtLines(t.tenantId);
         return {
           displayName: displayName,
           key: key,
@@ -1118,15 +996,13 @@ async function loadDebt() {
   } catch (e) {
     statusDot.className = 'status-dot error';
     statusText.textContent = 'Error loading data';
-    issuesEl.textContent = e.message;
+    showLoadError(document.getElementById('debt-entities'), e);
   }
 }
 
-/* ================= HMRC TRACKER ================= */
-
-async function getHmrcBsLines(accessToken, tenantId, codeMap) {
+async function getHmrcBsLines(tenantId, codeMap) {
   const res = await fetch(WORKER + '/xero/Reports/BalanceSheet', {
-    headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
+    headers: { 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
   });
   if (!res.ok) throw new Error('BalanceSheet failed: ' + res.status);
   const data = await res.json();
@@ -1136,8 +1012,7 @@ async function getHmrcBsLines(accessToken, tenantId, codeMap) {
     corptax: { total: 0, lines: [] },
     payeni: { total: 0, lines: [] }
   };
-  const categoryByCode = {};
-  if (!report) return { result: result, categoryByCode: categoryByCode };
+  if (!report) return result;
 
   (report.Rows || []).forEach(function (section) {
     if (section.RowType !== 'Section') return;
@@ -1151,27 +1026,23 @@ async function getHmrcBsLines(accessToken, tenantId, codeMap) {
       const name = cells[0] && cells[0].Value || '';
       const value = parseAmt(cells[1] && cells[1].Value);
       const n = name.toLowerCase();
-      const attrs = (cells[0].Attributes || []);
-      const accountAttr = attrs.find(function (a) { return a.Id === 'account'; });
-      const code = accountAttr ? codeMap[accountAttr.Value] : null;
 
       for (const cat in HMRC_KEYWORDS) {
         if (HMRC_KEYWORDS[cat].some(function (k) { return n.indexOf(k) !== -1; })) {
           result[cat].total += value;
-          result[cat].lines.push({ name: name, value: value, code: code });
-          if (code) categoryByCode[code] = cat;
+          result[cat].lines.push({ name: name, value: value });
           return;
         }
       }
     });
   });
 
-  return { result: result, categoryByCode: categoryByCode };
+  return result;
 }
 
-async function getHmrcContactIds(accessToken, tenantId) {
+async function getHmrcContactIds(tenantId) {
   const res = await fetch(WORKER + '/xero/Contacts', {
-    headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
+    headers: { 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
   });
   if (!res.ok) throw new Error('Contacts failed: ' + res.status);
   const data = await res.json();
@@ -1180,7 +1051,7 @@ async function getHmrcContactIds(accessToken, tenantId) {
     .map(function (c) { return c.ContactID; });
 }
 
-async function getOpenHmrcBills(accessToken, tenantId, contactIds) {
+async function getOpenHmrcBills(tenantId, contactIds) {
   const empty = {
     vat: { total: 0, bills: [] },
     corptax: { total: 0, bills: [] },
@@ -1190,20 +1061,17 @@ async function getOpenHmrcBills(accessToken, tenantId, contactIds) {
 
   const whereClause = 'Type=="ACCPAY" AND Status=="AUTHORISED"';
   const res = await fetch(WORKER + '/xero/Invoices?where=' + encodeURIComponent(whereClause), {
-    headers: { 'Authorization': 'Bearer ' + accessToken, 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
+    headers: { 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
   });
   if (!res.ok) throw new Error('Invoices failed: ' + res.status);
   const data = await res.json();
   const result = empty;
 
-  // Every open bill raised to HMRC is a VAT payment per how this group operates —
-  // no need to inspect line items/account codes (which Xero's list endpoint
-  // doesn't reliably return anyway).
   (data.Invoices || []).forEach(function (inv) {
     const cid = inv.Contact && inv.Contact.ContactID;
     if (contactIds.indexOf(cid) === -1) return;
     const amountDue = parseFloat(inv.AmountDue) || 0;
-    if (amountDue <= 0.005) return; // fully paid, nothing outstanding
+    if (amountDue <= 0.005) return;
     result.vat.total += amountDue;
     result.vat.bills.push({
       ref: inv.InvoiceNumber || inv.Reference || '(no reference)',
@@ -1219,9 +1087,6 @@ function hmrcCategoryRowHtml(cat, bsData, apData) {
   const bsTotal = bsData.total;
   const apTotal = apData.total;
   const hasOpenBills = apData.bills.length > 0;
-
-  // VAT: the AP bill is the real "amount owed" per how this group operates.
-  // Corp Tax and PAYE & NI: no bill is raised — the Balance Sheet accrual IS the figure.
   const usesAp = cat === 'vat';
   const amount = (usesAp && hasOpenBills) ? apTotal : bsTotal;
 
@@ -1286,32 +1151,31 @@ async function loadHmrc() {
   issuesEl.innerHTML = '';
 
   try {
-    const accessToken = await getValidAccessToken();
-    const allTenants = await getTenants(accessToken);
+    const allTenants = await getTenants();
     const tenants = allTenants.filter(function (t) { return ORG_NAMES.indexOf(matchOrg(t.tenantName)) !== -1; });
 
     const issues = [];
     const results = await Promise.all(tenants.map(async function (t) {
       const displayName = matchOrg(t.tenantName);
-      let bsResult = { result: { vat: { total: 0, lines: [] }, corptax: { total: 0, lines: [] }, payeni: { total: 0, lines: [] } }, categoryByCode: {} };
+      let bsResult = { vat: { total: 0, lines: [] }, corptax: { total: 0, lines: [] }, payeni: { total: 0, lines: [] } };
       let contactIds = [];
       let ap = { vat: { total: 0, bills: [] }, corptax: { total: 0, bills: [] }, payeni: { total: 0, bills: [] } };
 
       try {
-        const codeMap = await getAccountCodeMap(accessToken, t.tenantId);
-        bsResult = await getHmrcBsLines(accessToken, t.tenantId, codeMap);
+        const codeMap = await getAccountCodeMap(t.tenantId);
+        bsResult = await getHmrcBsLines(t.tenantId, codeMap);
       } catch (e) {
         issues.push(displayName + ' (Balance Sheet): ' + e.message);
       }
 
       try {
-        contactIds = await getHmrcContactIds(accessToken, t.tenantId);
-        ap = await getOpenHmrcBills(accessToken, t.tenantId, contactIds);
+        contactIds = await getHmrcContactIds(t.tenantId);
+        ap = await getOpenHmrcBills(t.tenantId, contactIds);
       } catch (e) {
-        issues.push(displayName + ' (AP ledger \u2014 check you\'ve reconnected with the new permissions): ' + e.message);
+        issues.push(displayName + ' (AP ledger): ' + e.message);
       }
 
-      return { displayName: displayName, bs: bsResult.result, ap: ap, hmrcContactCount: contactIds.length };
+      return { displayName: displayName, bs: bsResult, ap: ap, hmrcContactCount: contactIds.length };
     }));
 
     const byName = {};
@@ -1329,7 +1193,6 @@ async function loadHmrc() {
     const grandTotal = grandVat + grandCorptax + grandPayeni;
 
     document.getElementById('hmrc-grand-total').textContent = fmt(grandTotal, 'GBP');
-    document.getElementById('hmrc-grand-total').className = 'amount' + (grandTotal < 0 ? '' : '');
     document.getElementById('hmrc-grand-vat').textContent = fmt(grandVat, 'GBP');
     document.getElementById('hmrc-grand-corptax').textContent = fmt(grandCorptax, 'GBP');
     document.getElementById('hmrc-grand-payeni').textContent = fmt(grandPayeni, 'GBP');
@@ -1340,11 +1203,10 @@ async function loadHmrc() {
   } catch (e) {
     statusDot.className = 'status-dot error';
     statusText.textContent = 'Error loading data';
-    issuesEl.textContent = e.message;
+    showLoadError(document.getElementById('hmrc-entities'), e);
   }
 }
 
-/* ================= view switching ================= */
 function showView(view) {
   currentView = view;
   document.getElementById('dashboard-screen').style.display = view === 'bank' ? 'block' : 'none';
@@ -1360,55 +1222,8 @@ function showView(view) {
   if (view === 'hmrc' && HMRC_STATE.entities.length === 0) loadHmrc();
 }
 
-function signOut() {
-  localStorage.removeItem(STORAGE_KEY);
-  localStorage.removeItem('xero_tokens');
-  sessionStorage.clear();
-  window.location.href = REDIRECT_URI;
-}
-
-async function handleCallback() {
-  const params = new URLSearchParams(window.location.search);
-  const code = params.get('code');
-  const state = params.get('state');
-  const savedState = sessionStorage.getItem('xero_state');
-  if (!code) return false;
-  document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('callback-screen').style.display = 'flex';
-  if (state !== savedState) { document.getElementById('callback-msg').textContent = 'Security error: state mismatch. Please try again.'; return true; }
-  try {
-    document.getElementById('callback-msg').textContent = 'Exchanging token with Xero\u2026';
-    const tokens = await exchangeCode(code);
-    saveTokens(tokens);
-    window.history.replaceState({}, '', REDIRECT_URI);
-    document.getElementById('callback-msg').textContent = 'Loading your balances\u2026';
-    await enterDashboard();
-  } catch (e) {
-    document.getElementById('callback-msg').textContent = 'Error: ' + e.message;
-  }
-  return true;
-}
-
-async function enterDashboard() {
-  document.getElementById('dashboard-screen').style.display = 'block';
-  document.getElementById('interco-screen').style.display = 'none';
-  document.getElementById('debt-screen').style.display = 'none';
-  document.getElementById('hmrc-screen').style.display = 'none';
-  document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('callback-screen').style.display = 'none';
-  document.getElementById('view-tabs').style.display = 'flex';
-  showView('bank');
-  await loadBalances();
-}
-
-async function init() {
-  const isCallback = await handleCallback();
-  if (isCallback) return;
-  if (getTokens()) { await enterDashboard(); }
-  else { document.getElementById('auth-screen').style.display = 'flex'; }
-}
-
-init();
+document.getElementById('dashboard-screen').style.display = 'block';
+loadBalances();
 </script>
 </body>
 </html>
