@@ -17,6 +17,8 @@
   #interco-screen { display: none; }
   #debt-screen { display: none; }
   #hmrc-screen { display: none; }
+  #ap-overview-screen { display: none; }
+  #ap-detail-screen { display: none; }
   .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
   .total-card { background: #1a1a18; color: #f5f4f0; border-radius: 16px; padding: 1.75rem 2rem; margin-bottom: 2rem; }
   .total-card .label { font-size: 12px; color: #888780; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.5rem; }
@@ -114,6 +116,36 @@
   .hmrc-lines { font-size: 11px; color: #a3a299; margin-top: 3px; line-height: 1.5; text-align: right; }
 
   .load-error { background: #fcebeb; border: 0.5px solid #f09595; border-radius: 12px; padding: 1.25rem 1.5rem; color: #a32d2d; font-size: 14px; line-height: 1.6; }
+
+  .ap-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+  .ap-metric { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 12px; padding: 1rem 1.25rem; }
+  .ap-metric.danger { background: #fcebeb; border-color: #f09595; }
+  .ap-metric .ap-metric-label { font-size: 12px; color: #888780; margin-bottom: 4px; }
+  .ap-metric.danger .ap-metric-label { color: #a32d2d; }
+  .ap-metric .ap-metric-value { font-size: 24px; font-weight: 500; }
+  .ap-metric.danger .ap-metric-value { color: #a32d2d; }
+
+  .ap-section-label { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
+  .ap-aging-bar { display: flex; height: 26px; border-radius: 8px; overflow: hidden; margin-bottom: 4px; }
+  .ap-aging-bar div { height: 100%; }
+  .ap-aging-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 11px; color: #888780; margin-bottom: 1.5rem; }
+
+  table.ap-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 1.5rem; }
+  table.ap-table th { text-align: right; font-size: 11px; color: #888780; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; padding: 6px 10px; border-bottom: 0.5px solid #e8e7e1; }
+  table.ap-table th:first-child, table.ap-table td:first-child { text-align: left; }
+  table.ap-table td { padding: 8px 10px; border-bottom: 0.5px solid #f0efe9; text-align: right; }
+  table.ap-table td:first-child { color: #1a1a18; }
+  .ap-badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
+  .ap-badge-overdue { background: #fcebeb; color: #a32d2d; }
+  .ap-badge-draft { background: #fef3d9; color: #854f0b; }
+  .ap-badge-awaiting { background: #e6f1fb; color: #0c447c; }
+
+  #ap-entity-tabs { display: flex; gap: 8px; margin-bottom: 1.25rem; }
+  .ap-entity-tab { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 8px; padding: 7px 14px; font-size: 13px; cursor: pointer; color: #5f5e5a; }
+  .ap-entity-tab.active { background: #1a1a18; color: #f5f4f0; border-color: #1a1a18; }
+
+  .ap-supplier-row td { font-weight: 600; color: #1a1a18; background: #f9f8f5; border-bottom: 0.5px solid #e8e7e1; }
+  .ap-bill-row td:first-child { padding-left: 24px; color: #5f5e5a; }
 </style>
 </head>
 <body>
@@ -130,6 +162,8 @@
     <button class="tab-btn" id="tab-interco" onclick="showView('interco')">Interco Matrix</button>
     <button class="tab-btn" id="tab-debt" onclick="showView('debt')">Debt Facilities</button>
     <button class="tab-btn" id="tab-hmrc" onclick="showView('hmrc')">HMRC</button>
+    <button class="tab-btn" id="tab-apoverview" onclick="showView('apoverview')">AP Overview</button>
+    <button class="tab-btn" id="tab-apdetail" onclick="showView('apdetail')">AP Detail</button>
   </div>
 
   <div id="dashboard-screen">
@@ -244,6 +278,74 @@
 
     <div id="hmrc-entities"></div>
     <div class="interco-issues" id="hmrc-issues"></div>
+  </div>
+
+  <div id="ap-overview-screen">
+    <div class="top-bar">
+      <div style="font-size:12px;color:#888780;">
+        <span class="status-dot" id="apoverview-status-dot"></span>
+        <span id="apoverview-status-text">Live data</span>
+      </div>
+      <button class="btn-refresh" onclick="loadApOverview()"><span style="font-size:16px;">&#8635;</span> Refresh</button>
+    </div>
+
+    <div class="ap-metrics">
+      <div class="ap-metric">
+        <div class="ap-metric-label">Awaiting payment</div>
+        <div class="ap-metric-value" id="ap-total-awaiting">&mdash;</div>
+      </div>
+      <div class="ap-metric">
+        <div class="ap-metric-label">In draft</div>
+        <div class="ap-metric-value" id="ap-total-draft">&mdash;</div>
+      </div>
+      <div class="ap-metric danger">
+        <div class="ap-metric-label">Overdue</div>
+        <div class="ap-metric-value" id="ap-total-overdue">&mdash;</div>
+      </div>
+      <div class="ap-metric">
+        <div class="ap-metric-label">Bills outstanding</div>
+        <div class="ap-metric-value" id="ap-total-count">&mdash;</div>
+      </div>
+    </div>
+
+    <div class="ap-section-label">Aging &mdash; awaiting payment only</div>
+    <div class="ap-aging-bar" id="ap-aging-bar"></div>
+    <div class="ap-aging-legend" id="ap-aging-legend"></div>
+
+    <div class="ap-section-label">By entity</div>
+    <table class="ap-table">
+      <thead><tr><th>Entity</th><th>Awaiting</th><th>Draft</th><th>Overdue</th></tr></thead>
+      <tbody id="ap-entity-table"></tbody>
+    </table>
+
+    <div class="ap-section-label">Largest outstanding bills</div>
+    <table class="ap-table">
+      <thead><tr><th>Supplier</th><th>Entity</th><th>Status</th><th>Due</th><th>Amount</th></tr></thead>
+      <tbody id="ap-largest-table"></tbody>
+    </table>
+    <div class="interco-issues" id="apoverview-issues"></div>
+  </div>
+
+  <div id="ap-detail-screen">
+    <div class="top-bar">
+      <div style="font-size:12px;color:#888780;">
+        <span class="status-dot" id="apdetail-status-dot"></span>
+        <span id="apdetail-status-text">Live data</span>
+      </div>
+      <button class="btn-refresh" onclick="loadApDetail()"><span style="font-size:16px;">&#8635;</span> Refresh</button>
+    </div>
+
+    <div id="ap-entity-tabs"></div>
+
+    <table class="ap-table">
+      <thead><tr><th>Supplier / ref</th><th>Entity</th><th>Due date</th><th>Days</th><th>Status</th><th>Amount</th></tr></thead>
+      <tbody id="ap-detail-body"></tbody>
+      <tfoot>
+        <tr><td colspan="5" style="padding:10px;font-weight:600;border-top:0.5px solid #d3d1c7;">Total outstanding</td>
+        <td id="ap-detail-total" style="text-align:right;padding:10px;font-weight:600;border-top:0.5px solid #d3d1c7;"></td></tr>
+      </tfoot>
+    </table>
+    <div class="interco-issues" id="apdetail-issues"></div>
   </div>
 
 </div>
@@ -1208,19 +1310,279 @@ async function loadHmrc() {
   }
 }
 
+/* ================= ACCOUNTS PAYABLE ================= */
+
+const AP_STATE = { overview: null, detail: [] };
+const AP_ENTITY_LABEL = { e4a: 'E4A', sd: 'S&D', sst: 'SST' };
+const AP_ENTITY_KEY = {
+  'Enterprise4All (North West) Limited': 'e4a',
+  'Stand & Deliver Limited': 'sd',
+  'Safe Space Talent Limited': 'sst'
+};
+
+function apDaysOverdue(dueDateString) {
+  if (!dueDateString) return null;
+  const due = new Date(dueDateString);
+  if (isNaN(due.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+  return Math.round((today - due) / 86400000);
+}
+
+function apAgingBucket(days) {
+  if (days === null || days === undefined) return null;
+  if (days <= 0) return 'current';
+  if (days <= 30) return 'b1_30';
+  if (days <= 60) return 'b31_60';
+  if (days <= 90) return 'b61_90';
+  return 'b90plus';
+}
+
+async function getApBills(tenantId, entityKey) {
+  async function fetchByStatus(status) {
+    const whereClause = 'Type=="ACCPAY" AND Status=="' + status + '"';
+    const res = await fetch(WORKER + '/xero/Invoices?where=' + encodeURIComponent(whereClause), {
+      headers: { 'xero-tenant-id': tenantId, 'Accept': 'application/json' }
+    });
+    if (!res.ok) throw new Error('Invoices (' + status + ') failed: ' + res.status);
+    const data = await res.json();
+    return data.Invoices || [];
+  }
+
+  const [authorised, draft] = await Promise.all([fetchByStatus('AUTHORISED'), fetchByStatus('DRAFT')]);
+  const bills = [];
+
+  authorised.forEach(function (inv) {
+    const amountDue = parseFloat(inv.AmountDue);
+    const amount = isNaN(amountDue) ? (parseFloat(inv.Total) || 0) : amountDue;
+    if (amount <= 0.005) return;
+    const dueDateString = inv.DueDateString ? inv.DueDateString.split('T')[0] : null;
+    const days = apDaysOverdue(dueDateString);
+    bills.push({
+      entityKey: entityKey,
+      supplier: (inv.Contact && inv.Contact.Name) || 'Unknown supplier',
+      ref: inv.InvoiceNumber || inv.Reference || '(no reference)',
+      dueDate: dueDateString,
+      days: days,
+      status: (days !== null && days > 0) ? 'overdue' : 'awaiting',
+      amount: amount
+    });
+  });
+
+  draft.forEach(function (inv) {
+    const amount = parseFloat(inv.Total) || 0;
+    if (amount <= 0.005) return;
+    bills.push({
+      entityKey: entityKey,
+      supplier: (inv.Contact && inv.Contact.Name) || 'Unknown supplier',
+      ref: inv.InvoiceNumber || inv.Reference || '(no reference)',
+      dueDate: null,
+      days: null,
+      status: 'draft',
+      amount: amount
+    });
+  });
+
+  return bills;
+}
+
+async function loadApData() {
+  const allTenants = await getTenants();
+  const tenants = allTenants.filter(function (t) { return ORG_NAMES.indexOf(matchOrg(t.tenantName)) !== -1; });
+
+  const issues = [];
+  const results = await Promise.all(tenants.map(async function (t) {
+    const displayName = matchOrg(t.tenantName);
+    const entityKey = AP_ENTITY_KEY[displayName] || displayName;
+    try {
+      return await getApBills(t.tenantId, entityKey);
+    } catch (e) {
+      issues.push(displayName + ': ' + e.message);
+      return [];
+    }
+  }));
+
+  const allBills = [].concat.apply([], results);
+  return { bills: allBills, issues: issues };
+}
+
+function apBadgeHtml(bill) {
+  if (bill.status === 'draft') return '<span class="ap-badge ap-badge-draft">Draft</span>';
+  if (bill.status === 'overdue') return '<span class="ap-badge ap-badge-overdue">' + bill.days + 'd overdue</span>';
+  return '<span class="ap-badge ap-badge-awaiting">Awaiting</span>';
+}
+
+async function loadApOverview() {
+  const statusDot = document.getElementById('apoverview-status-dot');
+  const statusText = document.getElementById('apoverview-status-text');
+  const issuesEl = document.getElementById('apoverview-issues');
+  ['ap-total-awaiting', 'ap-total-draft', 'ap-total-overdue', 'ap-total-count'].forEach(function (id) {
+    document.getElementById(id).textContent = '\u2014';
+  });
+  document.getElementById('ap-entity-table').innerHTML = '<tr><td colspan="4" style="padding:1rem;color:#888780;">Loading\u2026</td></tr>';
+  document.getElementById('ap-largest-table').innerHTML = '';
+  issuesEl.innerHTML = '';
+
+  try {
+    const data = await loadApData();
+    AP_STATE.overview = data;
+    const bills = data.bills;
+
+    const awaitingBills = bills.filter(function (b) { return b.status !== 'draft'; });
+    const draftBills = bills.filter(function (b) { return b.status === 'draft'; });
+    const overdueBills = bills.filter(function (b) { return b.status === 'overdue'; });
+
+    const totalAwaiting = awaitingBills.reduce(function (s, b) { return s + b.amount; }, 0);
+    const totalDraft = draftBills.reduce(function (s, b) { return s + b.amount; }, 0);
+    const totalOverdue = overdueBills.reduce(function (s, b) { return s + b.amount; }, 0);
+
+    document.getElementById('ap-total-awaiting').textContent = fmt(totalAwaiting, 'GBP');
+    document.getElementById('ap-total-draft').textContent = fmt(totalDraft, 'GBP');
+    document.getElementById('ap-total-overdue').textContent = fmt(totalOverdue, 'GBP');
+    document.getElementById('ap-total-count').textContent = String(bills.length);
+
+    const bucketOrder = ['current', 'b1_30', 'b31_60', 'b61_90', 'b90plus'];
+    const bucketLabel = { current: 'Current', b1_30: '1\u201330d', b31_60: '31\u201360d', b61_90: '61\u201390d', b90plus: '90d+' };
+    const bucketColor = { current: '#C0DD97', b1_30: '#FAC775', b31_60: '#EF9F27', b61_90: '#F09595', b90plus: '#E24B4A' };
+    const bucketTotals = {};
+    bucketOrder.forEach(function (k) { bucketTotals[k] = 0; });
+    awaitingBills.forEach(function (b) {
+      const bucket = apAgingBucket(b.days);
+      if (bucket) bucketTotals[bucket] += b.amount;
+    });
+    const agingTotal = bucketOrder.reduce(function (s, k) { return s + bucketTotals[k]; }, 0);
+
+    const barEl = document.getElementById('ap-aging-bar');
+    const legendEl = document.getElementById('ap-aging-legend');
+    if (agingTotal > 0) {
+      barEl.innerHTML = bucketOrder.map(function (k) {
+        const pct = (bucketTotals[k] / agingTotal) * 100;
+        return pct > 0 ? '<div style="width:' + pct.toFixed(2) + '%;background:' + bucketColor[k] + ';"></div>' : '';
+      }).join('');
+      legendEl.innerHTML = bucketOrder.map(function (k) {
+        const pct = agingTotal > 0 ? Math.round((bucketTotals[k] / agingTotal) * 100) : 0;
+        return '<span>' + bucketLabel[k] + ' ' + pct + '% (' + fmt(bucketTotals[k], 'GBP') + ')</span>';
+      }).join('');
+    } else {
+      barEl.innerHTML = '';
+      legendEl.innerHTML = '<span>No awaiting-payment bills to age</span>';
+    }
+
+    const byEntity = {};
+    Object.keys(AP_ENTITY_LABEL).forEach(function (k) { byEntity[k] = { awaiting: 0, draft: 0, overdue: 0 }; });
+    bills.forEach(function (b) {
+      if (!byEntity[b.entityKey]) byEntity[b.entityKey] = { awaiting: 0, draft: 0, overdue: 0 };
+      if (b.status === 'draft') byEntity[b.entityKey].draft += b.amount;
+      else byEntity[b.entityKey].awaiting += b.amount;
+      if (b.status === 'overdue') byEntity[b.entityKey].overdue += b.amount;
+    });
+    document.getElementById('ap-entity-table').innerHTML = Object.keys(AP_ENTITY_LABEL).map(function (k) {
+      const e = byEntity[k] || { awaiting: 0, draft: 0, overdue: 0 };
+      return '<tr><td>' + AP_ENTITY_LABEL[k] + '</td><td>' + fmt(e.awaiting, 'GBP') + '</td><td>' + fmt(e.draft, 'GBP') + '</td><td style="color:' + (e.overdue > 0 ? '#a32d2d' : 'inherit') + ';">' + fmt(e.overdue, 'GBP') + '</td></tr>';
+    }).join('');
+
+    const largest = bills.slice().sort(function (a, b) { return b.amount - a.amount; }).slice(0, 8);
+    document.getElementById('ap-largest-table').innerHTML = largest.map(function (b) {
+      return '<tr><td>' + escapeHtml(b.supplier) + '</td><td style="color:#888780;">' + AP_ENTITY_LABEL[b.entityKey] + '</td><td>' + apBadgeHtml(b) + '</td><td style="color:#888780;">' + (b.dueDate || '\u2014') + '</td><td style="font-weight:600;">' + fmt(b.amount, 'GBP') + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" style="color:#888780;">No outstanding bills found</td></tr>';
+
+    statusDot.className = 'status-dot';
+    statusText.textContent = 'Live data';
+    issuesEl.innerHTML = data.issues.length ? ('Issues: ' + data.issues.map(escapeHtml).join(' &middot; ')) : '';
+  } catch (e) {
+    statusDot.className = 'status-dot error';
+    statusText.textContent = 'Error loading data';
+    showLoadError(document.getElementById('ap-entity-table').parentElement, e);
+  }
+}
+
+function renderApDetailTable(filter) {
+  const bills = (AP_STATE.detail || []).filter(function (b) { return filter === 'all' || b.entityKey === filter; });
+  const bySupplier = {};
+  bills.forEach(function (b) {
+    if (!bySupplier[b.supplier]) bySupplier[b.supplier] = [];
+    bySupplier[b.supplier].push(b);
+  });
+  const suppliers = Object.keys(bySupplier).sort(function (a, b) {
+    const totalA = bySupplier[a].reduce(function (s, x) { return s + x.amount; }, 0);
+    const totalB = bySupplier[b].reduce(function (s, x) { return s + x.amount; }, 0);
+    return totalB - totalA;
+  });
+
+  let html = '';
+  let grandTotal = 0;
+  suppliers.forEach(function (supplier) {
+    const supplierBills = bySupplier[supplier];
+    const supplierTotal = supplierBills.reduce(function (s, b) { return s + b.amount; }, 0);
+    grandTotal += supplierTotal;
+    html += '<tr class="ap-supplier-row"><td colspan="5">' + escapeHtml(supplier) + '</td><td>' + fmt(supplierTotal, 'GBP') + '</td></tr>';
+    supplierBills.sort(function (a, b) { return (b.days || -999) - (a.days || -999); }).forEach(function (b) {
+      html += '<tr class="ap-bill-row"><td>' + escapeHtml(b.ref) + '</td><td style="color:#888780;">' + AP_ENTITY_LABEL[b.entityKey] + '</td>' +
+        '<td style="color:#888780;">' + (b.dueDate || '\u2014') + '</td>' +
+        '<td style="color:#888780;">' + (b.days !== null ? b.days : '\u2014') + '</td>' +
+        '<td>' + apBadgeHtml(b) + '</td><td>' + fmt(b.amount, 'GBP') + '</td></tr>';
+    });
+  });
+
+  document.getElementById('ap-detail-body').innerHTML = html || '<tr><td colspan="6" style="color:#888780;padding:1rem;">No bills for this entity</td></tr>';
+  document.getElementById('ap-detail-total').textContent = fmt(grandTotal, 'GBP');
+}
+
+async function loadApDetail() {
+  const statusDot = document.getElementById('apdetail-status-dot');
+  const statusText = document.getElementById('apdetail-status-text');
+  const issuesEl = document.getElementById('apdetail-issues');
+  document.getElementById('ap-detail-body').innerHTML = '<tr><td colspan="6" style="padding:1rem;color:#888780;">Loading\u2026</td></tr>';
+  issuesEl.innerHTML = '';
+
+  const tabsHtml = ['<button class="ap-entity-tab active" data-entity="all">All entities</button>']
+    .concat(Object.keys(AP_ENTITY_LABEL).map(function (k) {
+      return '<button class="ap-entity-tab" data-entity="' + k + '">' + AP_ENTITY_LABEL[k] + '</button>';
+    })).join('');
+  document.getElementById('ap-entity-tabs').innerHTML = tabsHtml;
+  document.querySelectorAll('#ap-entity-tabs .ap-entity-tab').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('#ap-entity-tabs .ap-entity-tab').forEach(function (b) { b.className = 'ap-entity-tab'; });
+      btn.className = 'ap-entity-tab active';
+      renderApDetailTable(btn.dataset.entity);
+    });
+  });
+
+  try {
+    const data = await loadApData();
+    AP_STATE.detail = data.bills;
+    renderApDetailTable('all');
+
+    statusDot.className = 'status-dot';
+    statusText.textContent = 'Live data';
+    issuesEl.innerHTML = data.issues.length ? ('Issues: ' + data.issues.map(escapeHtml).join(' &middot; ')) : '';
+  } catch (e) {
+    statusDot.className = 'status-dot error';
+    statusText.textContent = 'Error loading data';
+    showLoadError(document.getElementById('ap-detail-body').parentElement, e);
+  }
+}
+
 function showView(view) {
   currentView = view;
   document.getElementById('dashboard-screen').style.display = view === 'bank' ? 'block' : 'none';
   document.getElementById('interco-screen').style.display = view === 'interco' ? 'block' : 'none';
   document.getElementById('debt-screen').style.display = view === 'debt' ? 'block' : 'none';
   document.getElementById('hmrc-screen').style.display = view === 'hmrc' ? 'block' : 'none';
+  document.getElementById('ap-overview-screen').style.display = view === 'apoverview' ? 'block' : 'none';
+  document.getElementById('ap-detail-screen').style.display = view === 'apdetail' ? 'block' : 'none';
   document.getElementById('tab-bank').className = 'tab-btn' + (view === 'bank' ? ' active' : '');
   document.getElementById('tab-interco').className = 'tab-btn' + (view === 'interco' ? ' active' : '');
   document.getElementById('tab-debt').className = 'tab-btn' + (view === 'debt' ? ' active' : '');
   document.getElementById('tab-hmrc').className = 'tab-btn' + (view === 'hmrc' ? ' active' : '');
+  document.getElementById('tab-apoverview').className = 'tab-btn' + (view === 'apoverview' ? ' active' : '');
+  document.getElementById('tab-apdetail').className = 'tab-btn' + (view === 'apdetail' ? ' active' : '');
   if (view === 'interco' && Object.keys(INTERCO_STATE.matrix).length === 0) loadInterco();
   if (view === 'debt' && DEBT_STATE.entities.length === 0) loadDebt();
   if (view === 'hmrc' && HMRC_STATE.entities.length === 0) loadHmrc();
+  if (view === 'apoverview' && !AP_STATE.overview) loadApOverview();
+  if (view === 'apdetail' && AP_STATE.detail.length === 0) loadApDetail();
 }
 
 document.getElementById('dashboard-screen').style.display = 'block';
