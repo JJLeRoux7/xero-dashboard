@@ -146,6 +146,12 @@
 
   .ap-supplier-row td { font-weight: 600; color: #1a1a18; background: #f9f8f5; border-bottom: 0.5px solid #e8e7e1; }
   .ap-bill-row td:first-child { padding-left: 24px; color: #5f5e5a; }
+
+  .ap-accrued-box { background: #fdfaf3; border: 1px dashed #d4a94c; border-radius: 12px; padding: 1.25rem 1.5rem; margin-top: 1rem; }
+  .ap-accrued-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; gap: 1rem; }
+  .ap-accrued-subtitle { font-size: 12px; color: #8a7550; margin-top: 2px; }
+  .ap-accrued-total { font-size: 22px; font-weight: 600; color: #7a5c1e; white-space: nowrap; }
+  .ap-badge-flagged { background: #fef3d9; color: #854f0b; }
 </style>
 </head>
 <body>
@@ -324,6 +330,21 @@
       <tbody id="ap-largest-table"></tbody>
     </table>
     <div class="interco-issues" id="apoverview-issues"></div>
+
+    <div class="ap-accrued-box">
+      <div class="ap-accrued-header">
+        <div>
+          <div class="ap-section-label" style="margin-bottom:2px;">Accrued costs &mdash; not yet invoiced</div>
+          <div class="ap-accrued-subtitle">Estimates logged from Slack, not confirmed Xero bills &middot; kept separate from the totals above</div>
+        </div>
+        <div class="ap-accrued-total" id="ap-accrued-total">&mdash;</div>
+      </div>
+      <table class="ap-table" style="margin-bottom:0;">
+        <thead><tr><th>Vendor</th><th>Entity</th><th>Expected</th><th>Note</th><th>Amount</th></tr></thead>
+        <tbody id="ap-accrued-table"></tbody>
+      </table>
+      <div class="interco-issues" id="ap-accrued-issues"></div>
+    </div>
   </div>
 
   <div id="ap-detail-screen">
@@ -1490,10 +1511,111 @@ async function loadApOverview() {
     statusDot.className = 'status-dot';
     statusText.textContent = 'Live data';
     issuesEl.innerHTML = data.issues.length ? ('Issues: ' + data.issues.map(escapeHtml).join(' &middot; ')) : '';
+
+    loadAccruedCosts(bills);
   } catch (e) {
     statusDot.className = 'status-dot error';
     statusText.textContent = 'Error loading data';
     showLoadError(document.getElementById('ap-entity-table').parentElement, e);
+  }
+}
+
+/* ----- accrued costs: Slack sweep -> Google Sheet -> published CSV -----
+   Kept deliberately separate from the Xero-backed totals above. Every
+   "Open" row is cross-checked against the live Xero bills just loaded —
+   if a row looks like it's now landed in Xero as a real bill, it's
+   excluded from the total and flagged for manual clearing, so nothing
+   can silently double-count. */
+
+function parseCsvLine(line) {
+  const result = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (line[i + 1] === '"') { cur += '"'; i++; }
+        else { inQuotes = false; }
+      } else { cur += c; }
+    } else {
+      if (c === '"') { inQuotes = true; }
+      else if (c === ',') { result.push(cur); cur = ''; }
+      else { cur += c; }
+    }
+  }
+  result.push(cur);
+  return result;
+}
+
+function parseCsv(text) {
+  const lines = text.split(/\r?\n/).filter(function (l) { return l.trim().length > 0; });
+  if (!lines.length) return [];
+  const header = parseCsvLine(lines[0]).map(function (h) { return h.trim().toLowerCase(); });
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = parseCsvLine(lines[i]);
+    const row = {};
+    header.forEach(function (h, idx) { row[h] = (cells[idx] || '').trim(); });
+    rows.push(row);
+  }
+  return rows;
+}
+
+function accruedEntityKey(entityStr) {
+  const s = (entityStr || '').toLowerCase();
+  if (s.indexOf('e4a') !== -1 || s.indexOf('enterprise') !== -1) return 'e4a';
+  if (s.indexOf('s&d') !== -1 || s.indexOf('stand') !== -1) return 'sd';
+  if (s.indexOf('sst') !== -1 || s.indexOf('safe space') !== -1) return 'sst';
+  return null;
+}
+
+async function loadAccruedCosts(xeroBills) {
+  const issuesEl = document.getElementById('ap-accrued-issues');
+  const tableEl = document.getElementById('ap-accrued-table');
+  const totalEl = document.getElementById('ap-accrued-total');
+  issuesEl.innerHTML = '';
+  tableEl.innerHTML = '<tr><td colspan="5" style="padding:0.75rem;color:#8a7550;">Loading\u2026</td></tr>';
+
+  try {
+    const res = await fetch(WORKER + '/accrued-costs');
+    if (!res.ok) throw new Error('Failed to load accrued costs: ' + res.status);
+    const text = await res.text();
+    const rows = parseCsv(text);
+
+    const openRows = rows.filter(function (r) { return (r['status'] || '').toLowerCase() === 'open'; });
+
+    let total = 0;
+    const html = openRows.map(function (r) {
+      const entityKey = accruedEntityKey(r['entity']);
+      const amount = parseFloat((r['estimated amount'] || '').replace(/[^0-9.\-]/g, '')) || 0;
+      const vendor = r['vendor'] || '(no vendor)';
+
+      const matched = (xeroBills || []).some(function (b) {
+        if (entityKey && b.entityKey !== entityKey) return false;
+        const bLower = b.supplier.toLowerCase();
+        const vLower = vendor.toLowerCase();
+        const nameMatch = bLower.indexOf(vLower) !== -1 || vLower.indexOf(bLower) !== -1;
+        if (!nameMatch) return false;
+        return amount > 0 && Math.abs(b.amount - amount) / amount < 0.15;
+      });
+
+      if (!matched) total += amount;
+
+      const flag = matched ? '<br><span class="ap-badge ap-badge-flagged">&#9888; Now in Xero \u2014 please clear</span>' : '';
+      return '<tr><td>' + escapeHtml(vendor) + flag + '</td>' +
+        '<td style="color:#8a7550;">' + (entityKey ? AP_ENTITY_LABEL[entityKey] : escapeHtml(r['entity'] || '\u2014')) + '</td>' +
+        '<td style="color:#8a7550;">' + escapeHtml(r['expected invoice date'] || '\u2014') + '</td>' +
+        '<td style="color:#8a7550;font-size:12px;">' + escapeHtml(r['note'] || '') + '</td>' +
+        '<td style="font-weight:600;' + (matched ? 'text-decoration:line-through;color:#a3a299;' : '') + '">' + fmt(amount, 'GBP') + '</td></tr>';
+    }).join('');
+
+    tableEl.innerHTML = html || '<tr><td colspan="5" style="color:#8a7550;padding:0.75rem;">No open accrued costs logged</td></tr>';
+    totalEl.textContent = fmt(total, 'GBP');
+  } catch (e) {
+    totalEl.textContent = '\u2014';
+    tableEl.innerHTML = '';
+    issuesEl.innerHTML = 'Could not load accrued costs: ' + escapeHtml(e.message);
   }
 }
 
